@@ -1,11 +1,17 @@
 ---
 name: compile
-description: Use when the user asks to compile, ingest, or turn raw LLM Knowledge Base source files into wiki pages, including updating source summaries, concepts, entities, questions, cluster entrances, logs, and raw tracking. By default, after ingest, run a fresh post-compile coverage review unless the user explicitly asks for compile-only.
+description: Compile Raw Source into Wiki. Use when the user wants to ingest a raw source file into the wiki, or when new files are found under raw/ that haven't been processed yet.
 ---
 
 # Compile Raw Source into Wiki
 
-Ingest raw sources into the wiki, then gate completion on a fresh coverage review unless the user explicitly asks for `compile-only`.
+Ingest raw sources into the wiki, then gate completion on an independent coverage review unless the user explicitly asks for `compile-only`.
+
+## When to Use
+
+- User asks to ingest, compile, or process a raw source file
+- User drops a new file into `raw/` and wants it added to the wiki
+- New files are discovered under `raw/` that are not yet in `raw/raw-index.md`
 
 ## Input
 
@@ -14,7 +20,7 @@ Use the user's request text to determine which raw source files to ingest and wh
 - If a file path is specified (e.g. `raw/my-article.md`), process only that file
 - If no file is specified, run Step 0 to auto-discover new files, then process each one
 - Default `post_review=auto`
-- Set `post_review=skip` only when the user explicitly says `compile-only`, `just ingest`, `ingest without review`, or equivalent
+- Set `post_review=skip` only when the user explicitly says `compile-only`, `just ingest`, `ingest without review`, `--no-review`, or equivalent
 
 ## Workflow
 
@@ -79,14 +85,13 @@ Complete ingest for each selected source first. If more than one source is selec
 - Update `wiki/overview.md` only if the cluster entrance layer itself changes
 - Append to `wiki/log.md`:
 
-  ```markdown
+  ```
   ## [YYYY-MM-DD] ingest | Source title
   - New pages: `page1`, `page2`
   - Updated pages: `page3`
   - Summary: one-line summary of the source's core content
   ```
-
-- Update `raw/raw-index.md`: set file status to `done`, fill in `Ingested On` and `Source Page`, and leave `Validated On` blank until post-review passes
+- Update `raw/raw-index.md`: set file status to `done`, fill in `Ingested On` and `Source Page`, and leave `Validated On` blank until review passes
 
 ### Step 6: Build post-compile review handoff
 
@@ -108,29 +113,42 @@ navigation_entry: wiki/overview.md
 - Use repo-relative paths in the payload
 - Do not include raw-source excerpts or reasoning from the ingest pass
 
-### Step 7: Orchestrate post-compile coverage review
+### Step 7: Independent coverage review (spawn subagent)
+
+After compile finishes, **a separate subagent must be spawned to run coverage-review**, to prevent the same instance that just wrote the wiki from grading itself (player-as-referee).
 
 - If `post_review=skip`, stop after Step 5 and report that validation was intentionally skipped
-- If the repo defines `.codex/agents/coverage-reviewer.toml`, spawn the project-scoped `coverage_reviewer` sub-agent
-- If only one source was compiled, spawn one fresh `coverage_reviewer` sub-agent after Step 6
-- If multiple sources were compiled, finish ingest for the entire batch first, then spawn one fresh `coverage_reviewer` sub-agent per source in source order
-- Invoke the review sub-agent with `fork_context=false` and pass only the handoff payload plus the instruction to use the existing `coverage-review` workflow
-- Do not run the blind review in the same context that just ingested the raw source
+- Use the Agent tool with `subagent_type: coverage-reviewer` (defined in `.claude/agents/coverage-reviewer.md`, dedicated to independent review)
+- Single source: spawn one fresh coverage-reviewer subagent after Step 6
+- Batch compile: finish ingest for the entire batch first, then spawn one fresh coverage-reviewer subagent per source in source order
+- The prompt passed in must include the full handoff payload and whether review-only is required (default to allowing self-heal unless the user explicitly says otherwise)
+- The handoff supplies metadata only — no raw excerpts or reasoning from the ingest pass
+- Once the subagent returns its report, the main Claude must relay the Report section **verbatim** to the user; do not regrade or rewrite the verdict
 - Treat compile as incomplete until each required review finishes
 - The review phase is responsible for filling `Validated On` on success or leaving it blank with an unresolved-gap note in `Notes` on failure
 
-### Step 8: Final reporting
+Prompt template (fill in actual paths):
 
-- For a single source, report ingest outcome and post-review verdict together
-- For a batch run, report each source's ingest status and review verdict, and mark overall success only if every required review returned `Ready: yes`
+```
+Run an independent coverage review on the source just ingested:
+
+- raw file: {raw/...}
+- source page: {wiki/sources/source-...md}
+- cluster: {cluster-key}
+- touched_pages: {...}
+- compiled_at: {YYYY-MM-DD}
+- batch_id: {optional}
+- navigation_entry: wiki/overview.md
+
+Follow your agent spec (fully comply with `.claude/skills/coverage-review/SKILL.md`).
+Return the final Report section (Score / Primary / Holdout / Actions / Verdict) in the configured wiki language.
+```
 
 ## Rules
 
 - Never modify files in `raw/` (except `raw/raw-index.md`)
 - Every new page must have at least one inbound link from another page
 - Summaries: conclusion first, then details -- keep precise and concise
-- In related-page sections, use the direct / extended relation labels required by repo rules
+- In related-page sections, use the direct / extended relation labels required by repo rules (see `rules/content-rules.md`)
 - Do not use vague notes such as `related`, `see also`, or `same theme` without naming the actual bridge
 - Use the relevant cluster page and `wiki/overview.md` instead of any deleted global index
-- Reuse the existing `coverage-review` workflow for post-compile validation; do not create a second review rule set
-- Fresh `coverage_reviewer` sub-agents must rebuild context from the repository and must not rely on ingest-session memory
