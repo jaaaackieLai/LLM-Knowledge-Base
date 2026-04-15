@@ -1,6 +1,6 @@
 ---
 name: lint
-description: Use when the user asks to lint, audit, or health-check the LLM Knowledge Base wiki for orphan pages, broken links, missing frontmatter, index integrity, stale claims, contradictions, or related structural issues.
+description: Use when the user asks to lint, audit, or health-check the LLM Knowledge Base wiki for orphan pages, broken links, missing frontmatter, entrance integrity, stale claims, contradictions, or related structural issues.
 ---
 
 # Lint Wiki
@@ -16,11 +16,11 @@ Use the user's request text to determine which checks to run.
 
 ## Workflow
 
-### Step 1: Scan wiki overview
+### Step 1: Scan wiki entrances
 
-- Read `wiki/wiki-index.md` to get the full page list
+- Read `wiki/overview.md` and all pages under `wiki/clusters/` to get the entrance structure
 - Scan all .md files under `wiki/`
-- Compare index vs actual files for inconsistencies
+- Compare entrance pages and actual files for inconsistencies
 
 ### Step 2: Run checks
 
@@ -29,7 +29,7 @@ Execute the following checks in order, reporting results after each:
 #### 2a: Orphan pages (orphans)
 
 - Scan all `[[wiki-link]]` references across wiki pages
-- Find pages with zero inbound links (excluding wiki-index.md, log.md, overview.md)
+- Find pages with zero inbound links (excluding `log.md` and `overview.md`)
 - Report: list orphan pages
 
 #### 2b: Broken links (broken-links)
@@ -60,16 +60,17 @@ Execute the following checks in order, reporting results after each:
 - Compare frontmatter `updated` dates and `sources`
 - Report: list potentially outdated content
 
-#### 2g: Index integrity (index)
+#### 2g: Entrance integrity (routing | index)
 
-- Confirm all wiki pages are listed in `wiki/wiki-index.md`
-- Confirm index descriptions match actual page content
+- Confirm `wiki/overview.md` links only to cluster pages
+- Confirm every declared cluster has a matching page under `wiki/clusters/`
+- Confirm content pages use a valid `cluster` key when required
 - Confirm `raw/raw-index.md` status matches actual ingest state
 
 #### 2h: Frontmatter integrity (frontmatter)
 
 - Confirm all wiki pages have YAML frontmatter
-- Check required fields: title, type, created, updated, sources, tags
+- Check required fields: title, type, created, updated, sources, tags, and `cluster` for all non-`overview` / non-`cluster` pages
 
 #### 2i: Relation quality (relation-quality)
 
@@ -116,6 +117,6 @@ Present all findings in checklist format:
 ## Rules
 
 - Only report issues with high confidence -- avoid false positives
-- Fixes are limited to structural issues (links, frontmatter, index). Do not auto-fix content issues
+- Fixes are limited to structural issues (links, frontmatter, entrances). Do not auto-fix content issues
 - Contradictions and stale claims are reported only -- they require user judgment
 - Relation-quality findings are report-first; only auto-fix when the correction is structurally obvious
