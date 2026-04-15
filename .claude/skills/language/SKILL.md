@@ -5,7 +5,7 @@ description: Use when the user asks to change the repository's configured wiki l
 
 # Configure Repository Wiki Language
 
-Update the repository's configured wiki language across maintenance documentation and operational instructions.
+Update the repository's configured wiki language across maintenance documentation and operational instructions, including both user communication language and wiki-writing language.
 
 ## Input
 
@@ -20,22 +20,20 @@ Use the user's request text to determine the target language.
 
 - Read the requested language from the user's input
 - Normalize it into the exact wording that should appear in repository documentation
-- Treat this as the repository's configured wiki language for future communication and wiki writing
+- Treat this as the repository's configured language for future user communication and wiki writing
 
 ### Step 2: Update the language slots
 
-Update the configured wiki language consistently across non-wiki maintenance files, including:
+Update the configured language slots for both user communication and wiki writing consistently across non-wiki maintenance files, including:
 
 - `AGENTS.md`
 - `CLAUDE.md`
-- `README.md`
 - `rules/writing-style.md`
-- files under `.agents/skills/`
-- files under `.claude/skills/`
 
 Replace wording such as:
 
 - `For this repository, use zh-TW.`
+- `For this repository, communicate with the user in zh-TW and write wiki content in zh-TW.`
 - `the configured wiki language is zh-TW`
 - `in this repository, use zh-TW`
 
@@ -44,13 +42,13 @@ with the new target language.
 ### Step 3: Adjust language-dependent wording
 
 - Keep repository documentation in English unless the user explicitly asks to change that policy too
-- Update wording or examples that depend on the configured wiki language
+- Update wording or examples that depend on the configured language for user communication or wiki writing
 - Prefer generic phrasing whenever possible so future language changes require fewer edits
 
 ### Step 4: Validate
 
-- Search non-wiki maintenance files for stale references to the old configured wiki language
-- Confirm the new language is reflected consistently across documentation, skills, and slash commands
+- Search non-wiki maintenance files for stale references to the old configured wiki language or old wiki-writing language
+- Confirm the new language is reflected consistently across documentation, skills, slash commands, and wiki-writing instructions
 
 ## Rules
 
