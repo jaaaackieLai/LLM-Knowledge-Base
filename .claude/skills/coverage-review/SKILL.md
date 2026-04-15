@@ -15,26 +15,38 @@ This skill treats coverage as an answerability problem, not a page-count problem
 
 ## When to Use
 
-- After running `/compile` on a new source
+- After running compile on a new source
 - After major wiki edits or restructuring
 - When the user asks whether a topic is "covered enough"
-- When the user runs `/coverage-review` with or without a target argument
 
 ## Input
 
-$ARGUMENTS
+Use the user's request text or post-compile handoff payload to determine the evaluation target.
 
 - If a `raw/...` file is specified, evaluate that source
 - If a `wiki/sources/...` page is specified, evaluate that source page
+- If a post-compile handoff payload is provided, use it as routing metadata for the review
 - If no target is specified, default to the most recently ingested source you can identify from `wiki/log.md` or `raw/raw-index.md`
 - If the user explicitly asks only to review, do not edit
 - Otherwise, if the source does not meet the acceptance threshold, automatically enter the self-heal phase and then re-evaluate
+
+## Automatic Invocation Contract
+
+When this skill is invoked from `compile` using the `coverage-reviewer` subagent:
+
+- Run in a fresh subagent/session with no shared ingest context
+- Accept only the minimal handoff metadata: `raw_file`, `source_page`, `cluster`, `touched_pages`, `compiled_at`, optional `batch_id`, and `navigation_entry=wiki/overview.md`
+- Rebuild all working context by reading the repository again; do not rely on ingest-session memory
+- Treat the result as a blocking gate for compile completion
+- On `Ready: yes`, fill `Validated On` in `raw/raw-index.md`
+- On `Ready: no`, leave `Validated On` blank and record a short unresolved-gap summary in `Notes`
 
 ## Workflow
 
 ### Step 1: Resolve the evaluation target
 
-- Map the target raw file to its source page using `raw/raw-index.md`, source frontmatter, or `wiki/wiki-index.md`
+- Map the target raw file to its source page using `raw/raw-index.md`, source frontmatter, `wiki/overview.md`, or the relevant cluster page
+- If a post-compile handoff payload is present, verify that the referenced source page exists, then use the payload as the minimal routing scaffold
 - Read the target source page and the directly related concept, entity, comparison, and question pages linked from it
 - Read the original raw source only for question generation and later patch verification
 
@@ -62,7 +74,7 @@ These are the `primary` questions. If self-heal happens later, preserve them unc
 
 This is the blind retrieval phase. Use only `wiki/` content.
 
-- Start from `wiki/wiki-index.md` and the target source page
+- Start from `wiki/overview.md`, then move through the relevant cluster page and the target source page
 - Navigate through linked wiki pages as needed
 - Do not read `raw/` during this phase
 - Answer each of the five questions as if you were a user relying on the wiki
@@ -121,7 +133,7 @@ Allowed self-heals:
 - Remove or rewrite unsupported cross-references when the wiki graph is making retrieval less honest
 - Tighten an overly abstract paragraph so it directly answers the missed question
 - Create a missing concept or entity page when it is clearly central and well-supported
-- Update `wiki/wiki-index.md` and `wiki/log.md` for any new or changed pages
+- Update the relevant `wiki/clusters/` page, `wiki/overview.md` when the entrance layer changes, and `wiki/log.md` for any new or changed pages
 
 Do not self-heal:
 
@@ -165,7 +177,7 @@ Holdout questions must satisfy all of the following:
 
 Run a fresh wiki-only answer pass for the holdout set with the same retrieval restrictions:
 
-- Start from `wiki/wiki-index.md` or the target source page
+- Start from `wiki/overview.md` or the target source page
 - Use only `wiki/`
 - Record `status`, `pages_used`, `page_count`, and `answer`
 
@@ -237,6 +249,11 @@ If pages were edited, append to `wiki/log.md`:
 - Summary: one-line summary of the coverage gaps and repairs
 ```
 
+Also update `raw/raw-index.md`:
+
+- On `Ready: yes`, fill `Validated On` with today's date and clear any stale unresolved-gap note for that source if needed
+- On `Ready: no` after the allowed repair cycles, leave `Validated On` blank and write a concise unresolved-gap summary in `Notes`
+
 ## Rules
 
 - Preserve phase separation: `raw/` is allowed for question generation and patch verification, but never for the wiki-only answer pass
@@ -249,3 +266,4 @@ If pages were edited, append to `wiki/log.md`:
 - Default behavior is `review -> self-heal -> re-evaluate`; only skip self-heal when the user explicitly asks for review-only mode
 - Same-question regression is a repair check, not proof of generalization
 - After any self-heal, `Ready` must be based on both regression and holdout results
+- Automatic post-compile review must rebuild context from the repository rather than from the ingest session
