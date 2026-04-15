@@ -11,21 +11,19 @@ Answer user questions by researching the wiki, and archive valuable answers.
 
 - User asks a question about a topic that may be covered in the wiki
 - User wants to find or synthesize information across multiple wiki pages
-- User runs `/query` followed by their question
 - User asks what the wiki says about a concept, entity, or source
 
 ## Input
 
-$ARGUMENTS
-
-- The user's question or query topic
+Use the user's request text as the query topic.
 
 ## Workflow
 
 ### Step 1: Locate relevant pages
-- Read `wiki/wiki-index.md` to scan all page entries
-- Select the most relevant wiki pages based on query keywords (not raw sources)
-- If index info is insufficient, use Grep to search the `wiki/` directory
+- Read `wiki/overview.md` to choose the relevant cluster entrance
+- Read the relevant `wiki/clusters/` page before diving into leaf pages
+- Select the most relevant wiki pages based on query keywords and cluster routing (not raw sources)
+- If entrance routing is insufficient, use Grep to search the `wiki/` directory
 
 ### Step 2: Research and synthesize
 - Read all relevant wiki pages
@@ -64,11 +62,14 @@ If worth archiving, ask the user: "This answer may be worth archiving to wiki/an
   created: {today}
   updated: {today}
   sources: [raw files referenced by cited wiki pages]
+  cluster: {primary-cluster}
+  bridges: [] # optional
   tags: [relevant, tags]
   ---
   ```
 - Add cross-references `[[analysis-name]]` in related wiki pages
-- Update `wiki/wiki-index.md`: add entry under Analyses
+- Update the relevant `wiki/clusters/` page when the archived analysis improves navigation there
+- Update `wiki/overview.md` only if the entrance layer itself changes
 - Append to `wiki/log.md`:
   ```
   ## [YYYY-MM-DD] query | Question summary
