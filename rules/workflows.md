@@ -4,7 +4,9 @@ This file defines the operational workflows for ingest, query, coverage review, 
 
 ## Ingest
 
-When the user adds a new source to `raw/` or asks for ingest:
+In this repository, `compile` and `ingest` refer to the same workflow.
+
+When the user adds a new source to `raw/` or asks for ingest / compile:
 
 1. Read `raw/raw-index.md` to see which sources are not yet tracked or finished.
 2. Read the target raw source.
@@ -17,6 +19,13 @@ When the user adds a new source to `raw/` or asks for ingest:
 9. Update `wiki/overview.md` only if the cluster entrance layer itself changes.
 10. Append the ingest event to `wiki/log.md`.
 11. Mark the source as `done` in `raw/raw-index.md`.
+12. Unless the user explicitly asks for `compile-only`, `just ingest`, `ingest without review`, or equivalent, ingest must continue into post-ingest coverage review.
+13. Post-ingest coverage review must be run by a fresh independent `coverage-reviewer` agent or subagent in the active environment, not by the same agent instance that performed the ingest.
+14. The reviewer must rebuild context from repository state using only minimal routing handoff data. It must not rely on ingest-session memory or reuse raw-source reasoning from the ingest pass.
+15. For a single source, run one independent review after ingest. For a batch ingest, finish ingest for the whole batch first, then run one independent review per source in source order.
+16. Ingest / compile is not complete until every required independent review finishes.
+17. The post-ingest review reuses the normal coverage-review workflow and threshold. Do not create a separate review standard for ingest / compile.
+18. On review success, fill `Validated On` in `raw/raw-index.md`. On review failure, leave `Validated On` blank and record a concise unresolved-gap note in `Notes`.
 
 ## Query
 
