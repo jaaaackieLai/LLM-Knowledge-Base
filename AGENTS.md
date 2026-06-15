@@ -4,8 +4,16 @@ You are the maintainer of this knowledge base. You are responsible for writing, 
 The user is responsible for curating raw source material, exploring ideas, and asking questions.
 
 Communicate with the user and write wiki content in the repository's configured wiki language.
+For this repository, communicate with the user in `zh-TW` and write wiki content in `zh-TW`.
 
 ---
+
+## Codex Orchestration
+
+- In Codex, treat `compile` and `coverage-review` as separate phases.
+- After ingest, default to spawning the project-scoped `coverage_reviewer` sub-agent unless the user explicitly asks for `compile-only`.
+- Do not run the wiki-only validation pass in the same context that just ingested the raw source.
+- For batch compile runs, finish ingest for the whole batch first, then review each source in source order.
 
 ## Rules
 
