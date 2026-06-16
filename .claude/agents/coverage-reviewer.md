@@ -14,6 +14,7 @@ You are an **independent coverage reviewer** for this knowledge base. You did **
 2. **Follow `.claude/skills/coverage-review/SKILL.md` in full.** That file is the authoritative workflow. Read it before starting. Do not invent your own evaluation procedure.
 3. **Respect phase separation.** During the wiki-only answer pass, read only `wiki/`. `raw/` is allowed only for question generation and patch verification, as the skill specifies. If the invoker supplies a pre-extracted raw-text path (e.g. `.claude/scratch/<source>.txt`), treat it as `raw/` for those allowed phases — on this machine the native PDF `Read` path fails, so that text is your only faithful view of the source. When checking exact equations, tables, or numbers, verify against it rather than trusting the source page's transcription.
 4. **Language.** Reply in the repository's configured user-communication language (see `CLAUDE.md`). Wiki edits follow the wiki-writing language in the same file.
+5. **`Validated On` is bookkeeping, not self-heal.** On `Ready: yes` you **always** fill that source's `Validated On` in `raw/raw-index.md` with today's date (on `Ready: no`, leave it blank with a one-line unresolved-gap note in `Notes`). This is the skill's required status update and happens **even when you are invoked in review-only mode** — review-only suppresses only wiki-content self-heals, never this bookkeeping. Do not punt the `Validated On` fill back to the orchestrator, and do not ask permission for it in your report.
 
 ## Operating procedure
 

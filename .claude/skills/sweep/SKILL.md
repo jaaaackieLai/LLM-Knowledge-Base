@@ -37,14 +37,14 @@ For ad-hoc, user-driven ingest where you want to choose files interactively, use
 
 For each source in the list, in source order:
 
-1. **Extract once.** If `.pdf`, extract text with the user venv (`~/python_env/AI/Scripts/python.exe` + `pypdf`, `PYTHONIOENCODING=utf-8`, by page range for long PDFs) to a scratch path `.claude/scratch/<filename>.txt`. If `.md`, use the raw path directly (no extraction). Extracting once here avoids each analyst and the writer re-extracting the same PDF.
-2. **Fan out the analyst team (parallel).** In a single message, spawn all three read-only analysts, passing both the raw path and the extracted-text path:
+1. **Extract once.** If `.pdf`, extract text with the system `python` on PATH (+ `pypdf`, `PYTHONIOENCODING=utf-8`, by page range for long PDFs) to a scratch path `.claude/scratch/<filename>.txt`. If `.md`, use the raw path directly (no extraction). Extracting once here avoids each analyst and the writer re-extracting the same PDF. (The old `~/python_env/AI/` venv no longer exists; the system `python` already has `pypdf`.)
+2. **Fan out the analyst team (parallel).** In a single message, spawn all three analysts, passing the raw path, the extracted-text path, and a findings output path under `.claude/scratch/findings/`:
    - `theory-context-analyst`
    - `derivation-checker`
    - `experiment-synthesizer`
 
-   Collect their three findings notes.
-3. **Write (compile-runner).** Spawn `compile-runner` with the source path, the extracted-text path, and the three findings notes. It writes the wiki pages (compile Steps 2–6), enforces the no-naked-jargon rule, and returns a coverage-review handoff payload. It does **not** run the gate.
+   Each analyst writes its findings note to its findings file and returns only the path + a short gist. Collect the three findings-file paths (do not expect the full notes inline).
+3. **Write (compile-runner).** Spawn `compile-runner` with the source path, the extracted-text path, and the three findings-file paths (it reads the notes itself). It writes the wiki pages (compile Steps 2–6), enforces the no-naked-jargon rule, and returns a coverage-review handoff payload. It does **not** run the gate.
 
 Complete Step 3 for **every** source before moving on (batch rule inherited from the `compile` skill).
 
@@ -53,7 +53,7 @@ Complete Step 3 for **every** source before moving on (batch rule inherited from
 - For each ingested source, spawn a fresh `coverage-reviewer` with that source's handoff payload **and the source's pre-extracted text path** (`.claude/scratch/<source>.txt`) — so the reviewer can verify exact equations/numbers against the real raw extraction (the native PDF Read path fails here) instead of trusting only the writer's transcription.
 - Relay each reviewer's Report section **verbatim**; do not regrade or rewrite the verdict.
 - The reviewer fills `Validated On` on pass, or leaves it blank with an unresolved-gap note on fail.
-- **Evict scratch on pass.** Once a source's review returns `Ready: yes`, the orchestrator moves that source's `.claude/scratch/<source>.txt` into the OS temp directory (e.g. `mv` it under `"$(cygpath -u "$TEMP" 2>/dev/null || echo /tmp)/second-brain-scratch/"` — the `/tmp` fallback is used when `cygpath`/`$TEMP` are unavailable, as in this machine's Git Bash). On `Ready: no` / unresolved gap, leave it in `.claude/scratch/` for debugging. The reviewer never moves it (it has no Bash) — eviction is the orchestrator's job.
+- **Scratch is left for the user to clean.** Do **not** run move/delete commands to evict scratch — the user's no-deletion policy and the PowerShell deny rule block those (a move out of the repo counts as removal). Once a source passes, list its now-stale `.claude/scratch/<source>.txt` (and `.claude/scratch/findings/<source>-*.md`) in the Step 5 summary and let the user delete them manually. Scratch filenames are deterministic per source, so re-runs overwrite rather than accumulate. On `Ready: no` / unresolved gap, the scratch is needed for debugging anyway.
 
 ### Step 5: Summary
 
@@ -65,6 +65,6 @@ Complete Step 3 for **every** source before moving on (batch rule inherited from
 - **Orchestrator-only spawning.** This skill spawns every subagent; no subagent spawns another. The analyst fan-out and the coverage gate live here, not inside a phase agent.
 - **Non-interactive.** Never pause to ask which files — ingest all detected new sources. (The interactive path is the `compile` skill.)
 - **Models are fixed in each agent's frontmatter** — `raw-watcher` and `compile-runner` on Sonnet; the three analysts on Opus. Do not override per call.
-- **Scratch lifecycle & recycling (repo → temp on pass).** The orchestrator creates/overwrites `.claude/scratch/<source>.txt` before the analyst fan-out; it stays in-repo (inspectable) through the analysts, writer, and coverage review. **After that source's review passes (`Ready: yes`), the orchestrator moves the file out to the OS temp directory** (`second-brain-scratch/` under `$TEMP`), so the repo stays clean and the OS reclaims it. On a failed review it is **left in `.claude/scratch/` for debugging**. No agent ever *deletes* scratch (repo deletion policy); the only motion is the orchestrator's post-pass `mv` to temp, and only the orchestrator has Bash to do it. Filenames are deterministic per source, so any re-run before eviction overwrites rather than accumulates.
+- **Scratch lifecycle.** The orchestrator creates/overwrites `.claude/scratch/<source>.txt` before the analyst fan-out; the analysts add `.claude/scratch/findings/<source>-*.md`. These stay in-repo (inspectable) through the analysts, writer, and coverage review. **No agent ever moves or deletes scratch** — the user's no-deletion policy and the PowerShell deny rule block both (and a move out of the repo counts as removal). Stale scratch is surfaced in the Step 5 summary for the user to clean manually. Filenames are deterministic per source, so re-runs overwrite rather than accumulate per source.
 - This path **writes to the wiki autonomously**; that is intended for the automated / loop use case.
 - Treat the sweep as **incomplete** until each source's coverage review finishes.

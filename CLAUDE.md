@@ -22,13 +22,13 @@ Each maintenance phase has a defined owner. Batch-style phases (`coverage-review
 For unattended ingest, the work is split into single-responsibility subagents that the main thread (or a loop) chains together. **The orchestrator (main window / loop) is the team lead: subagents cannot spawn subagents, so all fan-out and gating happen at the orchestrator level, never inside a phase agent.**
 
 1. **raw-watcher** (Sonnet) — detect raw files not yet recorded as `done` in `raw/raw-index.md`, register each newly-found file into the index as `pending`, and instruct the main window to call the compile stage on the new-file list (newly registered + already pending). Its only write is appending `pending` rows.
-2. **Per source — extract once, then fan out the analyst team.** The orchestrator extracts each PDF's text one time (user venv + `pypdf`, `PYTHONIOENCODING=utf-8`) to a scratch text path, then spawns the three read-only analysts (each Opus 4.8, parallel ok), passing that path:
+2. **Per source — extract once, then fan out the analyst team.** The orchestrator extracts each PDF's text one time (system `python` on PATH + `pypdf`, `PYTHONIOENCODING=utf-8`) to a scratch text path, then spawns the three analysts (each Opus 4.8, parallel ok), passing that path:
    - **theory-context-analyst** — problem, method lineage, core idea/assumptions, concepts/entities to page.
    - **derivation-checker** — transcribe & re-derive key equations; flag Error/Assumption/Gap.
    - **experiment-synthesizer** — setup, headline results, and the ablation read of *which component drives the gains*.
-   Collect their three findings notes.
-3. **compile-runner** (writer, Sonnet, non-interactive) — given the source plus the three findings notes, write the wiki pages (compile Steps 2–6) and emit a coverage-review handoff payload per source. It does **not** spawn the analysts and does **not** run the gate.
-4. **coverage-reviewer** — spawned by the orchestrator per source, in source order, using each handoff payload **plus the source's extracted-text path** (so it can verify exact equations/numbers against the real raw extraction, not just the writer's transcription); its verdict gates pipeline completion. On `Ready: yes`, the orchestrator then evicts that source's scratch text from `.claude/scratch/` to the OS temp dir (repo stays clean); on a failed review the scratch is kept for debugging.
+   Each analyst writes its findings note to a file under `.claude/scratch/findings/` and returns only that path plus a short gist (keeping the orchestrator's context lean rather than relaying full notes inline). Collect the three findings-file paths.
+3. **compile-runner** (writer, Sonnet, non-interactive) — given the source plus the three findings-file paths (it reads the notes itself), write the wiki pages (compile Steps 2–6) and emit a coverage-review handoff payload per source. It does **not** spawn the analysts and does **not** run the gate.
+4. **coverage-reviewer** — spawned by the orchestrator per source, in source order, using each handoff payload **plus the source's extracted-text path** (so it can verify exact equations/numbers against the real raw extraction, not just the writer's transcription); its verdict gates pipeline completion. On `Ready: yes`, the reviewer fills that source's `Validated On` in `raw/raw-index.md` itself — this is a status update, not a wiki self-heal, so it happens even when the reviewer is invoked in review-only mode. The scratch text under `.claude/scratch/` is then stale; **do not run move/delete commands to evict it** (the user's no-deletion policy and the PowerShell deny rule block those — a move out of the repo counts as removal). Instead list the stale scratch files in the summary and let the user clean them manually. Scratch filenames are deterministic per source, so re-runs overwrite rather than accumulate. On a failed review the scratch is kept for debugging.
 
 The interactive `compile` skill on the main thread still owns ad-hoc, user-driven ingest. The pipeline above is the automated path: `raw-watcher → (per source) extract → {theory-context-analyst, derivation-checker, experiment-synthesizer} → compile-runner → coverage-reviewer`.
 
@@ -47,7 +47,7 @@ Omit the interval (`/loop /sweep`) to let the model self-pace; stop by interrupt
 ## Tooling (Windows)
 
 - Most raw sources are PDFs. On this machine the Read tool's native PDF path fails (no `pdftoppm`/poppler), so do not rely on it for ingest.
-- Extract PDF text with the user venv instead: `~/python_env/AI/Scripts/python.exe` + `pypdf`. Set `PYTHONIOENCODING=utf-8` so CJK text in stdout is not garbled. For long PDFs, extract by page range rather than all at once.
+- Extract PDF text with the **system `python` on PATH** + `pypdf` (the old `~/python_env/AI/Scripts/python.exe` venv no longer exists — do not use it; the system `python`, e.g. `...\Python312\python.exe`, already has `pypdf` installed). Set `PYTHONIOENCODING=utf-8` so CJK text in stdout is not garbled. For long PDFs, extract by page range rather than all at once.
 - For plain text / Markdown sources, use the Read, Grep, and Glob tools directly — no shell workaround needed.
 
 ## Rules

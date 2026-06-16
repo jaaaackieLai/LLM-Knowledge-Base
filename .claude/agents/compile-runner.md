@@ -18,17 +18,17 @@ You are the **writer** on the compile-stage team. You receive a raw source and t
 
 ## Team findings input
 
-The invoker normally supplies three findings notes per source from the analyst team. Treat them as your primary analyzed input and weave them into the pages, rather than re-deriving everything from scratch:
+The invoker normally supplies three findings-file paths per source (under `.claude/scratch/findings/`) from the analyst team — **read each file first**. Treat them as your primary analyzed input and weave them into the pages, rather than re-deriving everything from scratch:
 
 - **Theory & Method Context** → the source summary's framing, the method lineage, and which `wiki/concepts/` & `wiki/entities/` pages to create or update.
 - **Derivation Audit** → method-correctness notes and caveats. If the audit flags an `Error`/`Gap`/`Assumption` that matters, record it honestly (e.g. as a caveat or a `wiki/questions/` page) — do not paper over it.
 - **Experiment & Results Synthesis** → the results/ablation takeaways in the source summary, especially *which component drives the gains*.
 
-Still consult the source text for specific quotes/numbers when precision matters. If findings notes are **not** supplied, fall back to compile Step 1 and read & understand the source yourself.
+Still consult the source text for specific quotes/numbers when precision matters. If findings files are **not** supplied, fall back to compile Step 1 and read & understand the source yourself.
 
 ## PDF handling (Windows)
 
-For `.pdf` sources, prefer the pre-extracted text path if the invoker provides one; otherwise extract via the user venv (`~/python_env/AI/Scripts/python.exe` + `pypdf`, `PYTHONIOENCODING=utf-8`, page ranges for long PDFs). Do not rely on the Read tool's native PDF path. `.md` sources: read directly.
+For `.pdf` sources, prefer the pre-extracted text path if the invoker provides one; otherwise extract via the system `python` on PATH (+ `pypdf`, `PYTHONIOENCODING=utf-8`, page ranges for long PDFs; the old `~/python_env/AI/` venv is gone). Do not rely on the Read tool's native PDF path. `.md` sources: read directly.
 
 ## Operating procedure
 
