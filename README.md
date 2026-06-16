@@ -6,7 +6,7 @@
 
 This repository contains a personal knowledge base maintained with LLM assistance, inspired by [Karpathy's LLM Wiki idea](https://x.com/karpathy/status/2039805659525644595).
 
-![[Visualize.png]]
+![[.github/assets/Visualize.png]]
 
 ## Usage
 Browse the wiki with [Obsidian](https://obsidian.md/), and operate the repository with Codex or [Claude Code](https://claude.ai/code). 
