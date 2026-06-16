@@ -7,19 +7,20 @@ This file defines frontmatter requirements and the expected format of special na
 ```yaml
 ---
 title: Page Title
-type: overview | source | concept | entity | comparison | analysis | question | cluster
+type: overview | source | concept | entity | comparison | analysis | question | cluster | subcluster
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 sources: [raw/filename.md] # overview / cluster may use []
-cluster: self-management-growth | deep-learning-research | agent-engineering-practice # omit for overview / cluster
-bridges: [other-cluster-key] # optional; usually omitted for overview / cluster
+cluster: self-management-growth | deep-learning-research | agent-engineering-practice # required for source / concept / entity / comparison / analysis / question / subcluster; omit for overview / cluster
+subcluster: information-bottleneck-and-mutual-information # optional for source / concept / entity / comparison / analysis / question
+bridges: [other-cluster-key] # optional; usually omitted for overview / cluster / subcluster
 tags: [tag1, tag2]
 ---
 ```
 
 ## `wiki/overview.md`
 
-`wiki/overview.md` is the only top-level navigation page. It should list cluster entrances only, not regular content pages.
+`wiki/overview.md` is the only top-level navigation page. It should list cluster entrances only, not regular content pages or subcluster pages.
 
 ```markdown
 # Knowledge Base Overview
@@ -28,6 +29,55 @@ tags: [tag1, tag2]
 - [[cluster-self-management-growth]] — cluster entrance
 - [[cluster-deep-learning-research]] — cluster entrance
 - [[cluster-agent-engineering-practice]] — cluster entrance
+```
+
+## `wiki/clusters/*.md`
+
+Cluster pages are broad-domain entrances. They should route readers to subclusters first, then explain boundary and bridge routes.
+
+```markdown
+# 聚落：領域名稱
+
+## 核心問題
+- ...
+
+## 收錄邊界
+- 收：...
+- 不收：...
+
+## 子聚落
+- [[subcluster-example]] — specific topic entrance
+```
+
+## `wiki/subclusters/*.md`
+
+Subcluster pages are specific topic entrances inside one parent cluster.
+
+```yaml
+---
+title: 子聚落：主題名稱
+type: subcluster
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+sources: []
+cluster: deep-learning-research
+tags: [subcluster, navigation]
+---
+```
+
+```markdown
+# 子聚落：主題名稱
+
+## 核心問題
+- ...
+
+## 收錄邊界
+- 收：...
+- 不收：...
+
+## 代表性頁面
+- [[source-example]] — source relation
+- [[concept-example]] — concept relation
 ```
 
 ## `raw/raw-index.md`

@@ -25,7 +25,8 @@ llm-knowledge-base/
 └── wiki/                    # LLM-maintained wiki
     ├── log.md               # Append-only change log, outside the semantic graph
     ├── overview.md          # Top-level wiki entrance, links only to clusters
-    ├── clusters/            # Topic-cluster entrance pages
+    ├── clusters/            # Top-level cluster entrance pages
+    ├── subclusters/         # Cluster-internal topic entrances
     ├── sources/             # Per-source summary pages
     ├── concepts/            # Abstract concept pages
     ├── entities/            # Person / tool / organization pages
@@ -39,6 +40,7 @@ llm-knowledge-base/
 - `AGENTS.md` / `CLAUDE.md`: short entry files that define role, language behavior, and where to find the rules
 - `rules/README.md`: the documentation index; start here when you are unsure which rule file applies
 - `wiki/overview.md`: the only top-level wiki entrance page; it routes readers into clusters
-- `wiki/clusters/`: entrance pages for each major topic partition, including boundaries and bridge routes
+- `wiki/clusters/`: entrance pages for each major topic partition; they define the broad domain and route readers to subclusters
+- `wiki/subclusters/`: second-level entrance pages for specific topic lines inside a cluster
 - `wiki/log.md`: a maintenance log, not part of the semantic graph
 - `raw/raw-index.md`: a tracking table for source ingest and validation status, not part of the semantic graph
