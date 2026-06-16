@@ -6,6 +6,7 @@ This file defines language behavior and editorial style for repository maintenan
 
 - For this repository, communicate with the user in `zh-TW` and write wiki content in `zh-TW`.
 - For a different knowledge base, replace `zh-TW`, the relation labels, and the examples accordingly.
+- Math in chat/terminal replies: present equations in Unicode (e.g. `γ = 1/c`, `∑`, `√`, `≤`, `⊙`), not raw LaTeX — the chat/terminal renderer shows `$...$` as literal source. LaTeX is for wiki files only (see Math notation below), where Obsidian's MathJax typesets it.
 
 ## Style Guide
 
@@ -20,7 +21,7 @@ This file defines language behavior and editorial style for repository maintenan
 - Subcluster pages: treat them as specific topic entrances that collect the most representative pages for that line
 - Log behavior: keep `wiki/log.md` free of wiki links
 - Length guidance: source summaries usually `300-800`  words; concept pages usually `500-1500` words
-- Math notation: use LaTeX, with `$$...$$` for display math and `$...$` for inline math
+- Math notation (wiki files): use LaTeX, with `$$...$$` for display math and `$...$` for inline math (Obsidian renders it; for chat/terminal use Unicode per the Language Policy above)
 
 ## Concreteness and First-Appearance Terms (no naked jargon)
 
