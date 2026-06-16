@@ -34,6 +34,7 @@ Use the user's request text as the query topic.
 ### Step 3: Answer the user
 - Conclusion first, then details
 - Cite the wiki pages that informed the answer
+- Explain before you cite — a `[[page-name]]` link must supplement an explanation, never replace it. When the answer involves a concept, module, or entity the user may not already know, give a one-clause plain-language gloss of what it is / what it does at first mention, then attach the link for going deeper. Bad: 「這裡把 module A、B 結合，請見 [[page-name]]」without saying what A and B are — the link is for depth, not a substitute for understanding the answer.
 - If the wiki lacks sufficient information, state the knowledge gap clearly
 
 ### Step 4: Archive decision
