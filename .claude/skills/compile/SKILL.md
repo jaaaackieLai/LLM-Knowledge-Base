@@ -34,14 +34,25 @@ Complete ingest for each selected source first. If more than one source is selec
 - Add new files to `raw/raw-index.md` with `pending` status
 - List all `pending` files and ask the user whether to ingest all or select specific ones
 
-### Step 1: Read and understand
+### Step 1: Extract source text
 
-- Read the full source document
-- Identify: topic, key concepts, mentioned entities (people/tools/organizations), core arguments
+- **PDF**: extract text with the system `python` on PATH (+ `pypdf`, `PYTHONIOENCODING=utf-8`, by page range for long PDFs) to a scratch path `.claude/scratch/<filename>.txt`. The old `~/python_env/AI/` venv no longer exists; system `python` already has `pypdf`.
+- **Markdown / plain text**: use the raw path directly — no extraction needed.
 
-### Step 2: Create source summary page
+### Step 2: Analyst team (parallel, Opus 4.8)
 
-- Create a summary page in `wiki/sources/`
+In a single message, spawn all three analysts, passing the raw path, the extracted-text path (or raw path for `.md`), and a findings output path under `.claude/scratch/findings/`:
+
+- **theory-context-analyst** — problem, method lineage, core idea/assumptions, concepts/entities to page
+- **derivation-checker** — transcribe & re-derive key equations; flag Error/Assumption/Gap
+- **experiment-synthesizer** — setup, headline results, and the ablation read of which component drives the gains
+
+Each analyst writes its findings note to its findings file and returns only the path + a short gist. Collect the three findings-file paths (do not expect full notes inline).
+
+### Step 3: Create source summary page
+
+Using the analyst findings, create a summary page in `wiki/sources/`:
+
 - Filename: `source-{kebab-case-title}.md`
 - Must include YAML frontmatter:
 
@@ -60,7 +71,7 @@ Complete ingest for each selected source first. If more than one source is selec
 
 - Content structure: summary (2-3 paragraphs) -> key takeaways -> connections to other wiki pages with concrete rationale
 
-### Step 3: Update or create concept / entity pages
+### Step 4: Update or create concept / entity pages
 
 - For important concepts mentioned in the source:
   - If page already exists in `wiki/concepts/` -> update with new information and references
@@ -74,12 +85,12 @@ Complete ingest for each selected source first. If more than one source is selec
 - Treat editor synthesis as `extended` relations only when the bridge is already supported somewhere in `wiki/`
 - If a relation is plausible but not yet supportable, capture it as a question instead of forcing a cross-reference
 
-### Step 4: Capture open questions
+### Step 5: Capture open questions
 
 - Identify unanswered questions or directions worth exploring
 - Create question pages in `wiki/questions/` if warranted
 
-### Step 5: Update cluster entrances, raw index, and log
+### Step 6: Update cluster entrances, raw index, and log
 
 - Update the relevant page under `wiki/clusters/`
 - Update `wiki/overview.md` only if the cluster entrance layer itself changes
@@ -93,12 +104,13 @@ Complete ingest for each selected source first. If more than one source is selec
   ```
 - Update `raw/raw-index.md`: set file status to `done`, fill in `Ingested On` and `Source Page`, and leave `Validated On` blank until review passes
 
-### Step 6: Build post-compile review handoff
+### Step 7: Build post-compile review handoff
 
 After ingest for one source, collect the following payload:
 
 ```yaml
 raw_file: raw/{filename}
+extracted_text: .claude/scratch/{filename}.txt  # omit for .md sources
 source_page: wiki/sources/source-{kebab-case-title}.md
 cluster: {cluster-key}
 touched_pages:
@@ -113,15 +125,15 @@ navigation_entry: wiki/overview.md
 - Use repo-relative paths in the payload
 - Do not include raw-source excerpts or reasoning from the ingest pass
 
-### Step 7: Independent coverage review (spawn subagent)
+### Step 8: Independent coverage review (spawn subagent)
 
 After compile finishes, **a separate subagent must be spawned to run coverage-review**, to prevent the same instance that just wrote the wiki from grading itself (player-as-referee).
 
-- If `post_review=skip`, stop after Step 5 and report that validation was intentionally skipped
-- Use the Agent tool with `subagent_type: coverage-reviewer` (defined in `.claude/agents/coverage-reviewer.md`, dedicated to independent review)
-- Single source: spawn one fresh coverage-reviewer subagent after Step 6
+- If `post_review=skip`, stop after Step 6 and report that validation was intentionally skipped
+- Use the Agent tool with `subagent_type: coverage-reviewer`
+- Single source: spawn one fresh coverage-reviewer subagent after Step 7
 - Batch compile: finish ingest for the entire batch first, then spawn one fresh coverage-reviewer subagent per source in source order
-- The prompt passed in must include the full handoff payload and whether review-only is required (default to allowing self-heal unless the user explicitly says otherwise)
+- Pass the full handoff payload including `extracted_text` path so the reviewer can verify exact equations/numbers against the real raw extraction, not just the writer's transcription
 - The handoff supplies metadata only — no raw excerpts or reasoning from the ingest pass
 - Once the subagent returns its report, the main Claude must relay the Report section **verbatim** to the user; do not regrade or rewrite the verdict
 - Treat compile as incomplete until each required review finishes
@@ -133,6 +145,7 @@ Prompt template (fill in actual paths):
 Run an independent coverage review on the source just ingested:
 
 - raw file: {raw/...}
+- extracted text: {.claude/scratch/....txt}  # omit for .md sources
 - source page: {wiki/sources/source-...md}
 - cluster: {cluster-key}
 - touched_pages: {...}
@@ -152,3 +165,4 @@ Return the final Report section (Score / Primary / Holdout / Actions / Verdict) 
 - In related-page sections, use the direct / extended relation labels required by repo rules (see `rules/content-rules.md`)
 - Do not use vague notes such as `related`, `see also`, or `same theme` without naming the actual bridge
 - Use the relevant cluster page and `wiki/overview.md` instead of any deleted global index
+- **Scratch lifecycle.** Steps 1–2 write to `.claude/scratch/<source>.txt` and `.claude/scratch/findings/<source>-*.md`. These stay in-repo through the analyst, write, and review phases. **Never move or delete scratch files** — the user's no-deletion policy and the PowerShell deny rule block both. Stale scratch (after a passing review) should be listed in the summary for the user to clean manually. Filenames are deterministic per source, so re-runs overwrite rather than accumulate.

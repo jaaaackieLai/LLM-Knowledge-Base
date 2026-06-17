@@ -19,18 +19,25 @@ Each maintenance phase has a defined owner. Batch-style phases (`coverage-review
 
 ### Automated ingest pipeline (building blocks)
 
-For unattended ingest, the work is split into single-responsibility subagents that the main thread (or a loop) chains together. **The orchestrator (main window / loop) is the team lead: subagents cannot spawn subagents, so all fan-out and gating happen at the orchestrator level, never inside a phase agent.**
+The pipeline has two layers. **`compile` is the canonical per-source pipeline**; **`sweep` is the discovery wrapper** that runs `compile` on every newly detected source.
 
-1. **raw-watcher** (Sonnet) — detect raw files not yet recorded as `done` in `raw/raw-index.md`, register each newly-found file into the index as `pending`, and instruct the main window to call the compile stage on the new-file list (newly registered + already pending). Its only write is appending `pending` rows.
-2. **Per source — extract once, then fan out the analyst team.** The orchestrator extracts each PDF's text one time (system `python` on PATH + `pypdf`, `PYTHONIOENCODING=utf-8`) to a scratch text path, then spawns the three analysts (each Opus 4.8, parallel ok), passing that path:
+**`compile` (per source):**
+
+1. **Extract** — PDF: system `python` + `pypdf` → `.claude/scratch/<filename>.txt`. Markdown: read directly.
+2. **Analyst team** (Opus 4.8, parallel) — spawn all three in one message, passing the extracted-text path and a findings output path under `.claude/scratch/findings/`:
    - **theory-context-analyst** — problem, method lineage, core idea/assumptions, concepts/entities to page.
    - **derivation-checker** — transcribe & re-derive key equations; flag Error/Assumption/Gap.
    - **experiment-synthesizer** — setup, headline results, and the ablation read of *which component drives the gains*.
-   Each analyst writes its findings note to a file under `.claude/scratch/findings/` and returns only that path plus a short gist (keeping the orchestrator's context lean rather than relaying full notes inline). Collect the three findings-file paths.
-3. **compile-runner** (writer, Sonnet, non-interactive) — given the source plus the three findings-file paths (it reads the notes itself), write the wiki pages (compile Steps 2–6) and emit a coverage-review handoff payload per source. It does **not** spawn the analysts and does **not** run the gate.
-4. **coverage-reviewer** — spawned by the orchestrator per source, in source order, using each handoff payload **plus the source's extracted-text path** (so it can verify exact equations/numbers against the real raw extraction, not just the writer's transcription); its verdict gates pipeline completion. On `Ready: yes`, the reviewer fills that source's `Validated On` in `raw/raw-index.md` itself — this is a status update, not a wiki self-heal, so it happens even when the reviewer is invoked in review-only mode. The scratch text under `.claude/scratch/` is then stale; **do not run move/delete commands to evict it** (the user's no-deletion policy and the PowerShell deny rule block those — a move out of the repo counts as removal). Instead list the stale scratch files in the summary and let the user clean them manually. Scratch filenames are deterministic per source, so re-runs overwrite rather than accumulate. On a failed review the scratch is kept for debugging.
+   Each writes its findings note to `.claude/scratch/findings/` and returns only the path + a short gist.
+3. **Write** — main thread writes wiki pages (source summary, concept/entity pages, cluster entrances, log) using analyst findings.
+4. **coverage-reviewer** — spawned by the orchestrator per source, in source order, using the handoff payload **plus the source's extracted-text path** (so it can verify exact equations/numbers against the real raw extraction). On `Ready: yes`, the reviewer fills `Validated On` in `raw/raw-index.md`. Scratch files are left for the user to clean manually — **never move or delete them**.
 
-The interactive `compile` skill on the main thread still owns ad-hoc, user-driven ingest. The pipeline above is the automated path: `raw-watcher → (per source) extract → {theory-context-analyst, derivation-checker, experiment-synthesizer} → compile-runner → coverage-reviewer`.
+**`sweep` (discovery wrapper):**
+
+1. **raw-watcher** (Sonnet) — detect raw files not yet recorded as `done` in `raw/raw-index.md`, register each as `pending`, and return the handoff file list.
+2. **compile** — for each detected source, run the full compile pipeline above (skip compile's auto-discover step since `raw-watcher` already registered the files).
+
+The `compile` skill is the source of truth for the per-source pipeline details. `sweep` delegates everything except discovery to `compile`.
 
 ### Running the pipeline — `sweep` skill + `/loop`
 

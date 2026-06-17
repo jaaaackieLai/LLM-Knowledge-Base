@@ -6,49 +6,67 @@
 
 This repository contains a personal knowledge base maintained with LLM assistance, inspired by [Karpathy's LLM Wiki idea](https://x.com/karpathy/status/2039805659525644595).
 
-![Visualize](./.github/assets/Visualize.png)
+![[Visualize.png]]
 
 ## Usage
-Browse the wiki with [Obsidian](https://obsidian.md/), and operate the repository with Codex or [Claude Code](https://claude.ai/code). 
-Maintenance rules are organized under `rules/`.
 
-### **Topic Clusters**
-In this repository, a **`cluster`** is an internal navigation partition that helps decide which topic entrance a page belongs to first. It is not meant to be a universal taxonomy, and it's not something another person's knowledge base must copy directly.
+Open the wiki in [Obsidian](https://obsidian.md/) and run skills via [Claude Code](https://claude.ai/code) (or Codex). Start reading from [wiki/overview.md](wiki/overview.md) or any page under `wiki/clusters/`.
 
-For an external reader, the important idea is simply that the knowledge base groups content into a small number of topic entrances, then routes readers from cluster pages down to source, concept, entity, comparison, analysis, and question pages. In day-to-day use, start from `wiki/clusters/` instead of searching the whole graph blindly.
+### **Read the wiki**
 
-If you need the concrete cluster definitions and decision criteria used in this repository, see [rules/content-rules.md](rules/content-rules.md).
+Open `wiki/overview.md` in Obsidian. Navigate down through cluster pages → source/concept/entity pages. Use Obsidian's graph view to explore connections between pages.
 
-### **Skills**
-Here we introduce some self-defined skills in Codex and Claude.
+### **Ask a question**
 
-| Workflow | Skill | Purpose |
-| --- | --- | --- |
-| Ingest (interactive) | `compile`    | Turn `raw/` source material into `wiki/sources/` pages, assign clusters, and update related concepts, entities, questions, cluster pages, `overview`, and `log`   |
-| Ingest (automated)   | `sweep`      | Orchestrate the non-interactive ingest pipeline end-to-end — detect new `raw/` sources, run the analyst team, write the wiki pages, and gate on coverage review (Claude Code only)   |
-| Query           | `query`           | Answer from `wiki/` by starting from the relevant cluster entrance, and optionally archive durable answers to `wiki/analyses/`                                    |
-| Lint            | `lint`            | Audit structural and graph quality issues such as orphan pages, broken links, missing frontmatter, cluster integrity, overview integrity, and weak relation notes |
-| Coverage Review | `coverage-review` | Evaluate whether a source is answerable from `wiki/` alone, repair high-confidence gaps, and validate the repair                                                  |
-| Language Config | `language`        | Update the repository's configured wiki language across non-wiki maintenance documents and operational instructions                                               |
+Run `/query` in Claude Code (or Codex). The skill searches the wiki starting from the relevant cluster entrance and answers without reopening raw source files. Durable answers can be archived to `wiki/analyses/`.
 
-### **Ingesting sources: interactive vs automated**
+### **Add a new source**
 
-There are two ways to turn `raw/` material into wiki pages — same destination, different driver:
+1. Drop the file (PDF or Markdown) into `raw/`.
+2. Choose how to ingest it:
+   - **Interactive** — run `/compile`. You choose which files to process; the skill runs the analyst team, writes wiki pages, and gates on an independent coverage review, with you in the loop.
+   - **Automated** — run `/sweep` (Claude Code only). Detects all new `raw/` files not yet marked `done` and runs `/compile` on each without prompting.
+     - On demand: `/sweep`
+     - Unattended on a schedule: `/loop 3h /sweep`
 
-- **Interactive — `/compile`** (Codex or Claude Code). Runs on the main thread and asks which `raw/` files to ingest, writing pages with you in the loop. Best for ad-hoc, one-off ingest you want to steer.
-- **Automated / non-interactive — `/sweep`** (Claude Code). One command runs the entire pipeline without prompting: it finds every `raw/` source not yet marked `done` in [raw/raw-index.md](raw/raw-index.md), and for each one extracts the text, fans out a three-analyst team (theory context, derivation audit, experiment synthesis), writes the wiki pages, then gates on an **independent coverage review** before marking the source validated.
-  - On demand: `/sweep`
-  - Unattended on a schedule (default every 3 hours): `/loop 3h /sweep`. Omit the interval (`/loop /sweep`) to let the model self-pace; stop by interrupting the loop.
+Per source, `/compile` runs: **extract → analyst team → write wiki pages → coverage review**.
 
-The automated path is an orchestrator that chains single-responsibility subagents in `.claude/agents/` (no subagent spawns another):
+**sweep**
 
-```text
-raw-watcher → (per source) extract → {theory-context-analyst, derivation-checker, experiment-synthesizer} → compile-runner → coverage-reviewer
+```mermaid
+graph LR
+    RW[raw-watcher] --> C[compile\nper source]
 ```
 
-PDF text is extracted once with the system `python` (+ `pypdf`) into `.claude/scratch/`; the analysts write findings notes to `.claude/scratch/findings/`, which the writer (`compile-runner`) reads. The coverage reviewer's `Ready: yes/no` verdict gates completion and fills the source's validation date in `raw/raw-index.md`. Scratch files are left in place for you to clean manually (the repository never deletes files). See [CLAUDE.md](CLAUDE.md) for the full orchestration spec.
+**compile**
 
-> The automated pipeline (`sweep` + the subagent team) is Claude Code-specific, since it relies on subagents. The `compile`, `query`, `lint`, `coverage-review`, and `language` skills work in both Codex and Claude Code.
+```mermaid
+graph LR
+    E[Extract] --> TA[theory-context-analyst]
+    E --> DC[derivation-checker]
+    E --> ES[experiment-synthesizer]
+    TA --> W[Write wiki pages]
+    DC --> W
+    ES --> W
+    W --> CR[coverage-reviewer]
+```
+
+PDF text is extracted once with the system `python` (+ `pypdf`) into `.claude/scratch/`; analysts write findings to `.claude/scratch/findings/`. The coverage reviewer's `Ready: yes/no` verdict gates completion and fills the validation date in [raw/raw-index.md](raw/raw-index.md). Scratch files stay in place — clean them manually after a passing review.
+
+> `/sweep` and its subagent team require Claude Code. `/compile`, `/query`, `/lint`, `/coverage-review`, and `/language` work in both Claude Code and Codex.
+
+### **Maintain wiki health**
+
+| Task | Skill | When to run |
+| --- | --- | --- |
+| Ingest (interactive) | `/compile` | When you want to choose which sources to process |
+| Ingest (automated) | `/sweep` | To process all new sources hands-off |
+| Ask a question | `/query` | Any time |
+| Health check | `/lint` | After bulk edits or restructuring |
+| Validate coverage | `/coverage-review` | After ingest, or to spot-check a source |
+| Change wiki language | `/language` | When switching the repository language |
+
+See [CLAUDE.md](CLAUDE.md) for the full orchestration spec and [rules/](rules/) for content, structure, and style rules.
 
 ### **Directory Structure**
 
