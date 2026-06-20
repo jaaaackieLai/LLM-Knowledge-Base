@@ -6,7 +6,7 @@
 
 This repository contains a personal knowledge base maintained with LLM assistance, inspired by [Karpathy's LLM Wiki idea](https://x.com/karpathy/status/2039805659525644595).
 
-![[Visualize.png]]
+![Visualize](./.github/assets/LLMKB-Visualization.png)
 
 ## Usage
 
