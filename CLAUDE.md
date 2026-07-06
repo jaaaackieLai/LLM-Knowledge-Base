@@ -12,8 +12,8 @@ For this repository, communicate with the user in `zh-TW` and write wiki content
 
 Each maintenance phase has a defined owner. Batch-style phases (`coverage-review`, `lint`) run in a fresh, decoupled subagent; interactive phases (`compile`, `query`) run on the main thread so they can talk to the user.
 
-- **compile** — main thread runs the `compile` skill directly (it asks the user which raw files to ingest). Treat `compile` and `coverage-review` as separate phases.
-- **coverage-review** — after ingest, default to spawning the project-scoped `coverage-reviewer` subagent unless the user explicitly asks for `compile-only`. Do not run the wiki-only validation pass in the same context that just ingested the raw source. For batch compile runs, finish ingest for the whole batch first, then review each source in source order.
+- **compile** — main thread runs the `compile` skill directly as orchestrator (it asks the user which raw files to ingest, then spawns the phase subagents). The main thread never reads the raw source or writes wiki pages itself. Treat `compile` and `coverage-review` as separate phases.
+- **coverage-review** — after ingest, default to running the blind review protocol unless the user explicitly asks for `compile-only`: the `coverage-reviewer` subagent generates questions and grades, a fresh `blind-answerer` subagent (which has never seen the raw source) runs each wiki-only answer pass, and the orchestrator relays scratch files between them. Never run the wiki-only validation pass in a context that has read the raw source. For batch compile runs, finish ingest for the whole batch first, then review each source in source order.
 - **lint** — when the user asks to lint/audit/health-check the wiki, spawn the project-scoped `lint-runner` subagent. It reports by default and only fixes structural issues when the user explicitly authorizes a fix; surface its Lint Report verbatim.
 - **query** — main thread runs the `query` skill directly (it is an interactive question-and-answer flow).
 
@@ -21,20 +21,22 @@ Each maintenance phase has a defined owner. Batch-style phases (`coverage-review
 
 The pipeline has two layers. **`compile` is the canonical per-source pipeline**; **`sweep` is the discovery wrapper** that runs `compile` on every newly detected source.
 
-**`compile` (per source):**
+**`compile` (per source):** the orchestrator (main thread) reads no source content itself; it verifies targets, spawns subagents with **exact scratch paths**, and relays files between phases. Sources are read by the analysts, the writer, and the reviewer directly with the Read tool (PDFs render to page images via `pdftoppm`; see Tooling below).
 
-1. **Extract** — PDF: system `python` + `pypdf` → `.claude/scratch/<filename>.txt`. Markdown: read directly.
-2. **Analyst team** (Opus 4.8, parallel) — spawn all three in one message, passing the extracted-text path and a findings output path under `.claude/scratch/findings/`:
+1. **Analyst team** (Opus 4.8, parallel) — spawn all three in one message, passing the raw source path and the exact findings output path each must use (`.claude/scratch/findings/<slug>-theory.md` / `-derivation.md` / `-experiment.md`):
    - **theory-context-analyst** — problem, method lineage, core idea/assumptions, concepts/entities to page.
    - **derivation-checker** — transcribe & re-derive key equations; flag Error/Assumption/Gap.
    - **experiment-synthesizer** — setup, headline results, and the ablation read of *which component drives the gains*.
-   Each writes its findings note to `.claude/scratch/findings/` and returns only the path + a short gist.
-3. **Write** — main thread writes wiki pages (source summary, concept/entity pages, cluster entrances, log) using analyst findings.
-4. **coverage-reviewer** — spawned by the orchestrator per source, in source order, using the handoff payload **plus the source's extracted-text path** (so it can verify exact equations/numbers against the real raw extraction). On `Ready: yes`, the reviewer fills `Validated On` in `raw/raw-index.md`. Scratch files are left for the user to clean manually — **never move or delete them**.
+   Each writes its findings note to its assigned file and returns only the path + a short gist.
+2. **Write** (`compile-runner`, Sonnet) — spawned with the raw path + three findings paths; writes the wiki pages (source summary, concept/entity pages, cluster entrances, log, raw-index), emits the coverage handoff payload, and surfaces claim–evidence conflicts.
+3. **Blind coverage review** — orchestrated per source, in source order, after the whole batch finishes ingest:
+   - **coverage-reviewer** (referee) gets the handoff payload **plus the source's raw path** (so it can verify exact equations/numbers against the source itself); it writes question + answer-key files to `.claude/scratch/coverage/` and grades, but never answers its own questions.
+   - **blind-answerer** (Sonnet, fresh per pass) gets only the question file and answers strictly from `wiki/`; the orchestrator relays its answers file back to the reviewer (initial, regression, and holdout passes each use a fresh blind-answerer).
+   - On `Ready: yes`, the reviewer fills `Validated On` in `raw/raw-index.md`. Scratch files are left for the user to clean manually — **never move or delete them**.
 
 **`sweep` (discovery wrapper):**
 
-1. **raw-watcher** (Sonnet) — detect raw files not yet recorded as `done` in `raw/raw-index.md`, register each as `pending`, and return the handoff file list.
+1. **raw-watcher** (Sonnet) — detect raw files not yet recorded as `done` in `raw/raw-index.md`, register each as `pending` (with a post-append table self-check), and return the handoff file list.
 2. **compile** — for each detected source, run the full compile pipeline above (skip compile's auto-discover step since `raw-watcher` already registered the files).
 
 The `compile` skill is the source of truth for the per-source pipeline details. `sweep` delegates everything except discovery to `compile`.
@@ -53,8 +55,10 @@ Omit the interval (`/loop /sweep`) to let the model self-pace; stop by interrupt
 
 ## Tooling (Windows)
 
-- Most raw sources are PDFs. On this machine the Read tool's native PDF path fails (no `pdftoppm`/poppler), so do not rely on it for ingest.
-- Extract PDF text with the **system `python` on PATH** + `pypdf` (the old `~/python_env/AI/Scripts/python.exe` venv no longer exists — do not use it; the system `python`, e.g. `...\Python312\python.exe`, already has `pypdf` installed). Set `PYTHONIOENCODING=utf-8` so CJK text in stdout is not garbled. For long PDFs, extract by page range rather than all at once.
+- Most raw sources are PDFs. **Read them directly with the Read tool** — it reads PDFs natively by rendering each page to an image via `pdftoppm` (poppler is installed on this machine and on PATH). This is the single, canonical way to read a PDF here; there is no separate text-extraction step and no scratch `.txt`.
+  - Reading by page range is supported (and preferred for long PDFs) via the Read tool's `pages` parameter.
+  - Because pages are read as images, the model sees equations, tables, and figures in their original layout, but the content is not grep-able. When you need to locate a term across a long PDF, read the relevant page range rather than searching text.
+  - If `pdftoppm` is ever missing (poppler uninstalled), the native path fails; reinstall poppler rather than reintroducing a text-extraction workaround.
 - For plain text / Markdown sources, use the Read, Grep, and Glob tools directly — no shell workaround needed.
 
 ## Rules

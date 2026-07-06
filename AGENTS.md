@@ -10,9 +10,11 @@ For this repository, communicate with the user in `zh-TW` and write wiki content
 
 ## Codex Orchestration
 
-- In Codex, treat `compile` and `coverage-review` as separate phases.
-- After ingest, default to spawning the project-scoped `coverage_reviewer` sub-agent unless the user explicitly asks for `compile-only`.
-- Do not run the wiki-only validation pass in the same context that just ingested the raw source.
+Codex follows the same pipeline as Claude Code. The canonical workflow definitions live in `.claude/skills/` (the `.agents/skills/` files here are thin mirrors pointing at them), and the canonical agent specs live in `.claude/agents/` (the `.codex/agents/` TOMLs are thin shims pointing at them). Never fork workflow content in a mirror — update the canonical file (see `rules/repository-structure.md` → Single Source of Truth).
+
+- Treat `compile` and `coverage-review` as separate phases. The orchestrating context spawns every phase sub-agent; no sub-agent spawns another, and the orchestrator itself neither reads the raw source nor writes wiki pages.
+- Ingest per source: three analysts (`theory_context_analyst`, `derivation_checker`, `experiment_synthesizer`) write findings notes to exact scratch paths → `compile_runner` writes the wiki pages and emits the handoff payload.
+- After ingest, default to the **blind coverage-review protocol** unless the user explicitly asks for `compile-only`: `coverage_reviewer` (referee) generates questions and grades; each wiki-only answer pass runs in a **fresh `blind_answerer` sub-agent that has never seen the raw source**; the orchestrator relays scratch files between them. Never run the wiki-only validation pass in a context that has read the raw source.
 - For batch compile runs, finish ingest for the whole batch first, then review each source in source order.
 
 ## Rules
