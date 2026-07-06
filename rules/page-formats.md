@@ -11,8 +11,8 @@ type: overview | source | concept | entity | comparison | analysis | question | 
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 sources: [raw/filename.md] # overview / cluster may use []
-cluster: self-management-growth | deep-learning-research | agent-engineering-practice # required for source / concept / entity / comparison / analysis / question / subcluster; omit for overview / cluster
-subcluster: information-bottleneck-and-mutual-information # optional for source / concept / entity / comparison / analysis / question
+cluster: cluster-key # required for source / concept / entity / comparison / analysis / question / subcluster; omit for overview / cluster. Valid keys are defined in rules/content-rules.md → Cluster Keys (single source of truth — do not enumerate them here)
+subcluster: subcluster-key # optional for source / concept / entity / comparison / analysis / question. Valid keys are defined in rules/content-rules.md → Subcluster Keys
 bridges: [other-cluster-key] # optional; usually omitted for overview / cluster / subcluster
 tags: [tag1, tag2]
 ---
@@ -26,9 +26,7 @@ tags: [tag1, tag2]
 # Knowledge Base Overview
 
 ## Clusters
-- [[cluster-self-management-growth]] — cluster entrance
-- [[cluster-deep-learning-research]] — cluster entrance
-- [[cluster-agent-engineering-practice]] — cluster entrance
+- [[cluster-<key>]] — cluster entrance, one line per cluster key defined in content-rules.md
 ```
 
 ## `wiki/clusters/*.md`
@@ -94,3 +92,10 @@ tags: [subcluster, navigation]
 ```
 
 Allowed status values: `pending` / `in-progress` / `done` / `update-needed`
+
+Formatting constraints (see also content-rules.md rule 20):
+
+- One compact row per line, no alignment padding — padded tables make anchored edits fragile.
+- Every cell stays one short phrase; long validation narratives belong in `wiki/log.md`.
+- Escape literal `|` inside a cell as `\|`, otherwise the row splits.
+- One row per file on disk; never add a second row for the same filename.

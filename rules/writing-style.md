@@ -7,6 +7,7 @@ This file defines language behavior and editorial style for repository maintenan
 - For this repository, communicate with the user in `zh-TW` and write wiki content in `zh-TW`.
 - For a different knowledge base, replace `zh-TW`, the relation labels, and the examples accordingly.
 - Math in chat/terminal replies: present equations in Unicode (e.g. `γ = 1/c`, `∑`, `√`, `≤`, `⊙`), not raw LaTeX — the chat/terminal renderer shows `$...$` as literal source. LaTeX is for wiki files only (see Math notation below), where Obsidian's MathJax typesets it.
+- Links in chat/terminal replies: reference wiki pages as standard Markdown links with repo-relative paths, e.g. `[contrastive-learning](wiki/concepts/contrastive-learning.md)`, so the user can ctrl+click to jump to the file. Obsidian `[[wiki-links]]` are for wiki content files only — in chat they render as plain text and cannot be followed. This applies to everything surfaced in conversation, including subagent reports relayed to the user.
 
 ## Style Guide
 

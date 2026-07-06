@@ -22,6 +22,8 @@ This file defines the wiki's content rules, cluster structure, and relation poli
 16. `wiki/log.md` records change events only and must stay outside the semantic graph.
 17. No naked jargon. A technical term's first appearance on a page must resolve to an existing `[[link]]`, an inline gloss, or a new concept page, following the tiered first-appearance-term policy in `writing-style.md`. Do not create stub pages just to satisfy a link.
 18. Source page filenames are topic-oriented: name a `wiki/sources/` page after the paper's core method/concept in kebab-case, with no venue or year prefix. Example: `source-graph-information-bottleneck` (✅), not `source-neurips-2020-graph-information-bottleneck` (❌). The reader should recognize the topic from the filename without needing the venue.
+19. Rotate `wiki/log.md` yearly: at the start of each year (or once the file exceeds roughly 200 KB), move the previous year's entries into `wiki/log-YYYY.md` and keep only the current year in `wiki/log.md`. Log archives stay outside the semantic graph, like the log itself.
+20. In `raw/raw-index.md`, keep every table cell to one short phrase and escape literal `|` characters as `\|`. Long validation narratives belong in `wiki/log.md`, not in the index. Do not use alignment padding — one compact row per line keeps anchored edits reliable.
 
 ## Cluster Keys
 
@@ -50,6 +52,7 @@ Current subclusters are grouped under their parent cluster:
 - `transformers-and-model-analysis` — Transformer mechanisms, attention structure, attribution, and mechanistic or geometric model analysis
 - `weight-space-learning-and-parameter-generation` — model weight space learning, model zoo representations, permutation-aware alignment, and neural network parameter generation
 - `generative-dynamics-and-scaling` — generative modeling, world models, dynamical systems, posterior sampling, and scaling behavior
+- `privacy-attacks-and-membership-inference` — membership inference, federated-learning privacy attacks and defenses, and model-memorization leakage analysis
 
 ### `agent-engineering-practice`
 
