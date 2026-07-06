@@ -70,8 +70,9 @@ Execute the following checks in order, reporting results after each:
 
 - Confirm `wiki/overview.md` links only to cluster pages
 - Confirm every declared cluster has a matching page under `wiki/clusters/`
-- Confirm content pages use a valid `cluster` key when required
+- Confirm content pages use a valid `cluster` key (and, when present, a valid `subcluster` key) per `rules/content-rules.md`
 - Confirm `raw/raw-index.md` status matches actual ingest state
+- **Raw-index table integrity**: no filename appears in more than one row; every row has exactly six cells (literal `|` inside a cell must be escaped as `\|`); every row's file actually exists under `raw/`; every file under `raw/` (excluding `raw-index.md` and `assets/`) has at most one row; status is one of the allowed values
 
 #### 2h: Frontmatter integrity (frontmatter)
 
@@ -85,6 +86,13 @@ Execute the following checks in order, reporting results after each:
 - Flag grouped links whose single note does not clearly cover each linked page
 - Flag notes that overstate certainty when only loose thematic overlap is evident
 - Report: suspicious weak or false links for human review
+
+#### 2j: Subcluster promotion threshold (promotion)
+
+- For each cluster page, scan its supplementary research-line section (e.g. `## 補充研究線`) and, for each line, count the strongly related pages (the line's source pages plus the concept/question pages they introduce)
+- Flag any line whose page count meets the subcluster threshold in `rules/content-rules.md` (3+ strongly related pages) as due for promotion to a formal subcluster
+- Flag any cluster page whose supplementary section has grown beyond one link per research line, or whose total link list makes it read like a content page instead of an entrance
+- Report: promotion suggestions and entrance-bloat findings for user confirmation (promotion itself is a content change — never auto-fix)
 
 ### Step 3: Summary report
 

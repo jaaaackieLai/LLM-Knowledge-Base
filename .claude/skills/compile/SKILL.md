@@ -5,7 +5,9 @@ description: Compile Raw Source into Wiki. Use when the user wants to ingest a r
 
 # Compile Raw Source into Wiki
 
-Ingest raw sources into the wiki, then gate completion on an independent coverage review unless the user explicitly asks for `compile-only`.
+Ingest raw sources into the wiki, then gate completion on an independent, blind coverage review unless the user explicitly asks for `compile-only`.
+
+This skill runs on the **main thread** as the orchestrator. The orchestrator spawns every phase subagent and relays scratch-file paths between them; no subagent spawns another. The orchestrator itself does **not** read the full raw source and does **not** write wiki pages — the analysts, the writer, and the reviewer do.
 
 ## When to Use
 
@@ -22,9 +24,16 @@ Use the user's request text to determine which raw source files to ingest and wh
 - Default `post_review=auto`
 - Set `post_review=skip` only when the user explicitly says `compile-only`, `just ingest`, `ingest without review`, `--no-review`, or equivalent
 
-## Workflow
+## Scratch file naming (mandatory)
 
-Complete ingest for each selected source first. If more than one source is selected, treat them as a batch and run post-compile review only after the whole batch finishes ingest.
+Derive a deterministic `<slug>` from the raw filename (short kebab-case identifier). Always pass **exact paths** to every subagent — never let an agent invent its own filename, so re-runs overwrite instead of accumulating:
+
+- Findings: `.claude/scratch/findings/<slug>-theory.md`, `<slug>-derivation.md`, `<slug>-experiment.md`
+- Coverage: `.claude/scratch/coverage/<slug>-primary-questions.md`, `<slug>-primary-key.md`, `<slug>-primary-answers.md`, `<slug>-regression-answers.md`, `<slug>-holdout-questions.md`, `<slug>-holdout-key.md`, `<slug>-holdout-answers.md`
+
+## Workflow (orchestrator)
+
+Complete ingest for each selected source first. If more than one source is selected, treat them as a batch: finish Steps 1–4 for every source, then run Step 5 per source in source order.
 
 ### Step 0: Auto-discover new files (only when no file is specified)
 
@@ -34,26 +43,104 @@ Complete ingest for each selected source first. If more than one source is selec
 - Add new files to `raw/raw-index.md` with `pending` status
 - List all `pending` files and ask the user whether to ingest all or select specific ones
 
-### Step 1: Extract source text
+### Step 1: Verify targets
 
-- **PDF**: extract text with the system `python` on PATH (+ `pypdf`, `PYTHONIOENCODING=utf-8`, by page range for long PDFs) to a scratch path `.claude/scratch/<filename>.txt`. The old `~/python_env/AI/` venv no longer exists; system `python` already has `pypdf`.
-- **Markdown / plain text**: use the raw path directly — no extraction needed.
+- Confirm each target file exists under `raw/` and has a row in `raw/raw-index.md` (register as `pending` if missing)
+- Do not read the source content on the main thread
 
 ### Step 2: Analyst team (parallel, Opus 4.8)
 
-In a single message, spawn all three analysts, passing the raw path, the extracted-text path (or raw path for `.md`), and a findings output path under `.claude/scratch/findings/`:
+In a single message, spawn all three analysts, passing the raw source path and the **exact** findings output path each must use (see Scratch file naming):
 
 - **theory-context-analyst** — problem, method lineage, core idea/assumptions, concepts/entities to page
 - **derivation-checker** — transcribe & re-derive key equations; flag Error/Assumption/Gap
 - **experiment-synthesizer** — setup, headline results, and the ablation read of which component drives the gains
 
-Each analyst writes its findings note to its findings file and returns only the path + a short gist. Collect the three findings-file paths (do not expect full notes inline).
+Each analyst writes its findings note to its assigned file and returns only the path + a short gist. Collect the three findings-file paths (do not expect full notes inline).
 
-### Step 3: Create source summary page
+### Step 3: Write phase (spawn compile-runner)
 
-Using the analyst findings, create a summary page in `wiki/sources/`:
+Spawn one **compile-runner** per source, passing the raw path and the three findings paths. It executes the Write Phase Specification below (source summary → concept/entity pages → open questions → entrances → log → raw index) and returns:
 
-- Filename: `source-{kebab-case-title}.md`
+- the coverage-review handoff payload (see Step 4 format)
+- a `Claim–Evidence Conflicts` section — relay it to the user
+
+### Step 4: Collect the handoff payload
+
+Per source, the payload from compile-runner must contain:
+
+```yaml
+raw_file: raw/{filename}
+source_page: wiki/sources/source-{kebab-case-title}.md
+cluster: {cluster-key}
+subcluster: {subcluster-key} # optional
+touched_pages:
+  - wiki/sources/source-{kebab-case-title}.md
+  - wiki/concepts/example-concept.md
+compiled_at: {today}
+batch_id: compile-{timestamp} # optional
+navigation_entry: wiki/overview.md
+```
+
+- `touched_pages` must include all newly created or updated wiki pages from this ingest
+- Repo-relative paths only; no raw-source excerpts or reasoning from the ingest pass
+
+### Step 5: Blind coverage review (orchestrated, per source in source order)
+
+If `post_review=skip`, stop after Step 4 and report that validation was intentionally skipped. Otherwise run this protocol; it exists because an agent that has read the raw source cannot un-know it — the answer pass must live in a context that has **never seen the source**.
+
+1. **Spawn coverage-reviewer** with the full handoff payload, the `raw_file` path, and the exact coverage scratch paths. It generates the primary questions, writes the question file (questions only) and the private answer key to scratch, and returns `AWAITING BLIND PASS` + the question-file path.
+2. **Spawn a fresh blind-answerer** with only: the question-file path, the answers output path, and `navigation_entry: wiki/overview.md`. Never mention the raw file or the source page in its prompt.
+3. **Continue the same coverage-reviewer** (SendMessage) with the answers path. It grades and returns either the final Report (`Ready: yes|no`) or `AWAITING REGRESSION PASS` after self-healing (it will have written the holdout question/key files by then).
+4. On `AWAITING REGRESSION PASS`: spawn a fresh blind-answerer on the **same primary question file** (answers to the regression-answers path), then continue the reviewer. If regression passes, it returns `AWAITING HOLDOUT PASS`: spawn a fresh blind-answerer on the holdout question file, then continue the reviewer for the final verdict.
+5. Repair-cycle cap: at most two self-heal cycles, enforced by the orchestrator. If agent continuation is unavailable, spawn a fresh coverage-reviewer and point it at the scratch state files to rebuild.
+6. Relay the reviewer's final Report section **verbatim** to the user; do not regrade or rewrite the verdict.
+7. The reviewer fills `Validated On` in `raw/raw-index.md` on `Ready: yes`, or leaves it blank with an unresolved-gap note in `Notes` on `Ready: no`. Treat compile as incomplete until each required review finishes.
+
+Blind-answerer prompt template (fill in actual paths; include nothing else):
+
+```
+Run a wiki-only blind answer pass.
+
+- questions file: .claude/scratch/coverage/{slug}-primary-questions.md
+- write your answers to: .claude/scratch/coverage/{slug}-primary-answers.md
+- navigation entry: wiki/overview.md
+
+Follow your agent spec. Use only wiki/ content.
+```
+
+Coverage-reviewer prompt template:
+
+```
+Run an independent blind coverage review on the source just ingested:
+
+- raw file: {raw/...}
+- source page: {wiki/sources/source-...md}
+- cluster: {cluster-key}
+- touched_pages: {...}
+- compiled_at: {YYYY-MM-DD}
+- batch_id: {optional}
+- navigation_entry: wiki/overview.md
+- scratch paths: {the seven coverage paths for this slug}
+
+Follow your agent spec (fully comply with `.claude/skills/coverage-review/SKILL.md`).
+You are the referee: generate questions and grade blind answers, but never run the
+answer pass yourself — return AWAITING BLIND PASS and wait for the orchestrator.
+Return the final Report section (Score / Primary / Holdout / Actions / Verdict) in the configured wiki language.
+```
+
+## Write Phase Specification (executed by compile-runner)
+
+### W1: Read inputs
+
+- Read the three findings notes first; treat them as the primary analyzed input
+- **PDF**: read directly with the Read tool — it renders each page to an image via `pdftoppm` (poppler). Use the Read `pages` parameter for long PDFs. Consult the source for exact quotes/numbers when precision matters
+- **Markdown / plain text**: use the raw path directly
+- If findings files are not supplied, read and understand the source yourself
+
+### W2: Create source summary page
+
+- Filename: `source-{kebab-case-title}.md` (topic-oriented, no venue/year prefix — content-rules rule 18)
 - Must include YAML frontmatter:
 
   ```yaml
@@ -64,6 +151,7 @@ Using the analyst findings, create a summary page in `wiki/sources/`:
   updated: {today}
   sources: [raw/{filename}]
   cluster: {cluster-key}
+  subcluster: {subcluster-key} # optional
   bridges: [] # optional
   tags: [relevant, tags]
   ---
@@ -71,11 +159,11 @@ Using the analyst findings, create a summary page in `wiki/sources/`:
 
 - Content structure: summary (2-3 paragraphs) -> key takeaways -> connections to other wiki pages with concrete rationale
 
-### Step 4: Update or create concept / entity pages
+### W3: Update or create concept / entity pages
 
 - For important concepts mentioned in the source:
   - If page already exists in `wiki/concepts/` -> update with new information and references
-  - If not -> create new page
+  - If not -> create new page (only when it clears the promotion threshold in `rules/writing-style.md`)
 - For important entities (people, tools, organizations) mentioned:
   - If page already exists in `wiki/entities/` -> update
   - If not -> create new page
@@ -85,14 +173,14 @@ Using the analyst findings, create a summary page in `wiki/sources/`:
 - Treat editor synthesis as `extended` relations only when the bridge is already supported somewhere in `wiki/`
 - If a relation is plausible but not yet supportable, capture it as a question instead of forcing a cross-reference
 
-### Step 5: Capture open questions
+### W4: Capture open questions
 
 - Identify unanswered questions or directions worth exploring
 - Create question pages in `wiki/questions/` if warranted
 
-### Step 6: Update cluster entrances, raw index, and log
+### W5: Update cluster entrances, raw index, and log
 
-- Update the relevant page under `wiki/clusters/`
+- Update the relevant page under `wiki/subclusters/` when the page belongs to an established subcluster, and the relevant page under `wiki/clusters/`
 - Update `wiki/overview.md` only if the cluster entrance layer itself changes
 - Append to `wiki/log.md`:
 
@@ -102,67 +190,15 @@ Using the analyst findings, create a summary page in `wiki/sources/`:
   - Updated pages: `page3`
   - Summary: one-line summary of the source's core content
   ```
-- Update `raw/raw-index.md`: set file status to `done`, fill in `Ingested On` and `Source Page`, and leave `Validated On` blank until review passes
-
-### Step 7: Build post-compile review handoff
-
-After ingest for one source, collect the following payload:
-
-```yaml
-raw_file: raw/{filename}
-extracted_text: .claude/scratch/{filename}.txt  # omit for .md sources
-source_page: wiki/sources/source-{kebab-case-title}.md
-cluster: {cluster-key}
-touched_pages:
-  - wiki/sources/source-{kebab-case-title}.md
-  - wiki/concepts/example-concept.md
-compiled_at: {today}
-batch_id: compile-{timestamp} # optional
-navigation_entry: wiki/overview.md
-```
-
-- `touched_pages` must include all newly created or updated wiki pages from this ingest
-- Use repo-relative paths in the payload
-- Do not include raw-source excerpts or reasoning from the ingest pass
-
-### Step 8: Independent coverage review (spawn subagent)
-
-After compile finishes, **a separate subagent must be spawned to run coverage-review**, to prevent the same instance that just wrote the wiki from grading itself (player-as-referee).
-
-- If `post_review=skip`, stop after Step 6 and report that validation was intentionally skipped
-- Use the Agent tool with `subagent_type: coverage-reviewer`
-- Single source: spawn one fresh coverage-reviewer subagent after Step 7
-- Batch compile: finish ingest for the entire batch first, then spawn one fresh coverage-reviewer subagent per source in source order
-- Pass the full handoff payload including `extracted_text` path so the reviewer can verify exact equations/numbers against the real raw extraction, not just the writer's transcription
-- The handoff supplies metadata only — no raw excerpts or reasoning from the ingest pass
-- Once the subagent returns its report, the main Claude must relay the Report section **verbatim** to the user; do not regrade or rewrite the verdict
-- Treat compile as incomplete until each required review finishes
-- The review phase is responsible for filling `Validated On` on success or leaving it blank with an unresolved-gap note in `Notes` on failure
-
-Prompt template (fill in actual paths):
-
-```
-Run an independent coverage review on the source just ingested:
-
-- raw file: {raw/...}
-- extracted text: {.claude/scratch/....txt}  # omit for .md sources
-- source page: {wiki/sources/source-...md}
-- cluster: {cluster-key}
-- touched_pages: {...}
-- compiled_at: {YYYY-MM-DD}
-- batch_id: {optional}
-- navigation_entry: wiki/overview.md
-
-Follow your agent spec (fully comply with `.claude/skills/coverage-review/SKILL.md`).
-Return the final Report section (Score / Primary / Holdout / Actions / Verdict) in the configured wiki language.
-```
+- Update `raw/raw-index.md`: set file status to `done`, fill in `Ingested On` and `Source Page`, and leave `Validated On` blank until review passes. Keep the Notes cell to one short phrase (content-rules rule 20)
 
 ## Rules
 
 - Never modify files in `raw/` (except `raw/raw-index.md`)
 - Every new page must have at least one inbound link from another page
 - Summaries: conclusion first, then details -- keep precise and concise
+- No naked jargon: enforce the first-appearance-term policy in `rules/writing-style.md`
 - In related-page sections, use the direct / extended relation labels required by repo rules (see `rules/content-rules.md`)
 - Do not use vague notes such as `related`, `see also`, or `same theme` without naming the actual bridge
 - Use the relevant cluster page and `wiki/overview.md` instead of any deleted global index
-- **Scratch lifecycle.** Steps 1–2 write to `.claude/scratch/<source>.txt` and `.claude/scratch/findings/<source>-*.md`. These stay in-repo through the analyst, write, and review phases. **Never move or delete scratch files** — the user's no-deletion policy and the PowerShell deny rule block both. Stale scratch (after a passing review) should be listed in the summary for the user to clean manually. Filenames are deterministic per source, so re-runs overwrite rather than accumulate.
+- **Scratch lifecycle.** Analysts write findings under `.claude/scratch/findings/`; the review protocol writes question/key/answer files under `.claude/scratch/coverage/`. These stay in-repo through the write and review phases. **Never move or delete scratch files** — the user's no-deletion policy blocks it. After a passing review, list the stale scratch files for the user to clean manually. Filenames are deterministic per source (orchestrator always passes exact paths), so re-runs overwrite rather than accumulate.

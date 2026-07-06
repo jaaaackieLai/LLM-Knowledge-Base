@@ -5,7 +5,7 @@ description: Orchestrate the unattended ingest pipeline end to end — detect ne
 
 # Ingest Sweep (Automated Pipeline Orchestrator)
 
-One-command orchestration of the automated ingest path. This skill runs on the **main thread** so it can spawn subagents (subagents cannot). It is the **team lead**: it drives `raw-watcher` to discover sources, then runs the full `compile` workflow per source — no phase agent spawns another.
+One-command orchestration of the automated ingest path. This skill runs on the **main thread** so it can spawn subagents (subagents cannot). It is the **team lead**: it drives `raw-watcher` to discover sources, then runs the full `compile` workflow per source — no phase agent spawns another. The main thread never reads the raw source or writes wiki pages itself; the analysts, compile-runner, coverage-reviewer, and blind-answerer do the reading and writing.
 
 ## When to Use
 
@@ -26,7 +26,7 @@ For ad-hoc, user-driven ingest where you want to choose files interactively, use
 ### Step 1: Detect (raw-watcher)
 
 - Spawn the `raw-watcher` subagent (Agent tool, `subagent_type: raw-watcher`).
-- It registers untracked files into `raw/raw-index.md` as `pending` and returns a Verdict with the handoff file list (newly registered + already pending).
+- It registers untracked files into `raw/raw-index.md` as `pending`, self-checks the table after appending, and returns a Verdict with the handoff file list (newly registered + already pending).
 
 ### Step 2: Gate on new sources
 
@@ -35,23 +35,24 @@ For ad-hoc, user-driven ingest where you want to choose files interactively, use
 
 ### Step 3: Compile each source (finish the whole batch first)
 
-For each source in the list, in source order, run the full compile workflow (**compile Steps 1–8**), non-interactively:
+For each source in the list, in source order, run the compile skill's orchestrator workflow (**compile Steps 1–5**), non-interactively:
 
 - Skip compile's Step 0 (auto-discover) — `raw-watcher` already discovered and registered the files.
-- All other compile steps execute as defined in `.claude/skills/compile/SKILL.md`: extract → analyst team → write wiki pages → build handoff → coverage review.
-- Complete all Steps 1–8 for every source before moving on (batch rule: finish ingest for all sources, then coverage review runs per source in source order).
+- Per source: verify target (Step 1) → spawn the three analysts in parallel with exact findings paths (Step 2) → spawn compile-runner with the findings paths (Step 3) → collect the handoff payload and relay any Claim–Evidence Conflicts (Step 4).
+- Batch rule: finish Steps 1–4 for **every** source first; then run the blind coverage-review protocol (compile Step 5) per source in source order.
 
 ### Step 4: Summary
 
-- Report per source: ingested (source page) + coverage verdict (`Ready: yes/no`).
-- List stale scratch files (`.claude/scratch/<source>.txt` and `.claude/scratch/findings/<source>-*.md`) for sources that passed review, so the user can clean them manually.
-- List anything skipped (extraction failure, unreadable source, etc.).
+- Report per source: ingested (source page) + coverage verdict (`Ready: yes/no`) + any claim–evidence conflicts.
+- List stale scratch files (`.claude/scratch/findings/<slug>-*.md` and `.claude/scratch/coverage/<slug>-*.md`) for sources that passed review, so the user can clean them manually.
+- List anything skipped (unreadable source, missing `pdftoppm`, etc.).
 
 ## Rules
 
-- **Orchestrator-only spawning.** This skill spawns every subagent; no subagent spawns another. All fan-out and gating happen here, not inside a phase agent.
+- **Orchestrator-only spawning.** This skill spawns every subagent; no subagent spawns another. All fan-out, blind-pass relaying, and gating happen here, not inside a phase agent.
 - **Non-interactive.** Never pause to ask which files — ingest all detected new sources. (The interactive path is the `compile` skill.)
-- **Models are fixed in each agent's frontmatter** — `raw-watcher` on Sonnet; the three analysts on Opus 4.8. Do not override per call.
+- **Models are fixed in each agent's frontmatter** — `raw-watcher`, `compile-runner`, and `blind-answerer` on Sonnet; the three analysts on Opus 4.8. Do not override per call.
+- **Exact scratch paths are mandatory.** Always pass the deterministic per-slug paths defined in the compile skill; never let an agent choose its own scratch filename.
 - **Scratch lifecycle is governed by the compile skill rules.** Never move or delete scratch files; surface stale ones in the Step 4 summary.
 - This path **writes to the wiki autonomously**; that is intended for the automated / loop use case.
-- Treat the sweep as **incomplete** until each source's coverage review finishes.
+- Treat the sweep as **incomplete** until each source's blind coverage review finishes.

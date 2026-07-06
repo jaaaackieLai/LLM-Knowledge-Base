@@ -29,12 +29,12 @@ Use the user's request text as the query topic.
 - Read all relevant wiki pages
 - Only fall back to `raw/` source files if wiki pages reference them and they help answer the question
 - Synthesize information from multiple pages into a structured answer
-- Cite sources using `see [[page-name]]` format
+- Cite sources as clickable Markdown links with repo-relative paths, e.g. `見 [page-name](wiki/concepts/page-name.md)` — `[[wiki-links]]` are for wiki content files only, not chat replies (see `rules/writing-style.md`)
 
 ### Step 3: Answer the user
 - Conclusion first, then details
 - Cite the wiki pages that informed the answer
-- Explain before you cite — a `[[page-name]]` link must supplement an explanation, never replace it. When the answer involves a concept, module, or entity the user may not already know, give a one-clause plain-language gloss of what it is / what it does at first mention, then attach the link for going deeper. Bad: 「這裡把 module A、B 結合，請見 [[page-name]]」without saying what A and B are — the link is for depth, not a substitute for understanding the answer.
+- Explain before you cite — a page link must supplement an explanation, never replace it. When the answer involves a concept, module, or entity the user may not already know, give a one-clause plain-language gloss of what it is / what it does at first mention, then attach the link for going deeper. Bad: 「這裡把 module A、B 結合，請見 [page-name](wiki/concepts/page-name.md)」without saying what A and B are — the link is for depth, not a substitute for understanding the answer.
 - If the wiki lacks sufficient information, state the knowledge gap clearly
 
 ### Step 4: Archive decision
