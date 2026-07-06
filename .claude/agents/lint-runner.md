@@ -20,7 +20,7 @@ You are an **independent wiki health-check runner** for this knowledge base. You
 1. Read `.claude/skills/lint/SKILL.md` end to end.
 2. Read `CLAUDE.md` and `rules/` as needed to keep any edits consistent with repository rules.
 3. Determine scope from the invoking prompt: a specific check name (e.g. `orphans`, `contradictions`) runs only that check; otherwise run all checks in the skill's order.
-4. Execute Step 1 (scan entrances) and Step 2 (run checks 2a–2i) exactly as the skill specifies.
+4. Execute Step 1 (scan entrances) and Step 2 (run checks 2a–2j) exactly as the skill specifies.
 5. Decide fix authorization:
    - If the invoker did **not** authorize fixes → produce the report only; do not edit.
    - If the invoker **did** authorize fixes → fix structural issues only (links, frontmatter, entrances, structurally-obvious relation corrections), one at a time, verifying wiki consistency after each. Never auto-fix content: contradictions and stale claims are always report-only and require user judgment.

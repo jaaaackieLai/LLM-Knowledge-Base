@@ -24,8 +24,9 @@ Matching is the whole job, so be deliberate. Before declaring a file untracked, 
 3. Compute:
    - **Untracked** = files under `raw/` whose trimmed name appears in no table row.
    - **Pending** = files whose row exists but status is not `done`.
-4. **Register each untracked file**: append a new row to `raw/raw-index.md` with status `pending` and the remaining columns (ingested date, validated date, source page, notes) left blank. Use Edit, anchoring on the current last row so existing rows are untouched. Keep the filename exactly as on disk. Do not touch any other file.
-5. Produce the report and hand off. Do not open source files, extract PDFs, or write wiki pages.
+4. **Register each untracked file**: append a new row to `raw/raw-index.md` with status `pending` and the remaining columns (ingested date, validated date, source page, notes) left blank. Use Edit, anchoring on the current last row so existing rows are untouched. Keep the filename exactly as on disk, escaping any literal `|` as `\|`. One compact row per line, no alignment padding. Do not touch any other file.
+5. **Post-append self-check**: re-read `raw/raw-index.md` and verify all of the following before handing off — the table gained exactly N rows (N = files you registered), every row still has exactly six cells, and no filename appears in more than one row. If any check fails, do not attempt further edits; report the anomaly in the Verdict (`Index integrity: FAILED — <what you saw>`) so the orchestrator stops instead of compiling against a corrupted index.
+6. Produce the report and hand off. Do not open source files, extract PDFs, or write wiki pages.
 
 ## Output contract
 
