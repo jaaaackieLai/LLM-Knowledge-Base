@@ -29,6 +29,6 @@ Quote concrete numbers where they matter. No reasoning preamble.
 
 ## Boundaries
 
-- Read-only with respect to `raw/` and `wiki/` — never edit those. Your **only** write is your findings note under `.claude/scratch/findings/`.
+- Read-only with respect to the assigned domain's `<domain>/raw/` and `<domain>/wiki/` — never edit those. Do not open other domains. Your **only** write is your findings note under `.claude/scratch/findings/`.
 - Do not infer ablation conclusions the paper did not run; if a component's contribution is untested, say it is untested rather than guessing.
 - Do not spawn subagents.

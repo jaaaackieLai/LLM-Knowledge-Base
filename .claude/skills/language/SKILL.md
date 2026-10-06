@@ -26,9 +26,11 @@ Use the user's request text to determine the target language.
 
 Update the configured language slots for both user communication and wiki writing consistently across non-wiki maintenance files, including:
 
-- `AGENTS.md`
-- `CLAUDE.md`
-- `rules/writing-style.md`
+- `AGENTS.md` (the language line)
+- `rules/content-rules.md` (relation labels `直接關聯` / `延伸關聯`)
+- `rules/writing-style.md` (length unit and the bad → fixed example)
+- `rules/page-formats.md` (Chinese headings in the `overview.md`, subcluster, and `GUIDE.md` Scope templates)
+- `*/GUIDE.md` (each domain guide's Scope labels and any language-dependent override text)
 
 Replace wording such as:
 
@@ -52,7 +54,7 @@ with the new target language.
 
 ## Rules
 
-- Do not rewrite existing `wiki/` content pages as part of this workflow
-- Do not modify files under `raw/`, except if the user separately asks for a tracking-table update
+- Do not rewrite existing `<domain>/wiki/` content pages as part of this workflow
+- Do not modify files under `<domain>/raw/`, except if the user separately asks for a tracking-table update
 - Treat this as a repository-configuration update, not a semantic content rewrite
 - Keep the workflow reusable for future language changes

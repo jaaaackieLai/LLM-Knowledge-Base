@@ -11,7 +11,7 @@ You analyze **one** raw source and report its theoretical and methodological con
 
 ## Focus
 
-You may read existing `wiki/` pages to situate the source against what the KB already knows, but do not edit anything.
+You may read existing pages in the assigned domain's `<domain>/wiki/` to situate the source against what the KB already knows, but do not edit anything.
 
 Situate the work, do not re-derive it (that is the derivation-checker) and do not tabulate results (that is the experiment-synthesizer). Concentrate on: the problem and why it matters, the lineage (prior approaches it extends, replaces, or contrasts with), the core method idea, and the assumptions/conditions under which it holds.
 
@@ -21,15 +21,15 @@ Write the full findings note (the sections below) to the **exact findings path t
 
 - `## Theory & Method Context — [source-title]`
 - `### Problem & Motivation` — the problem and why it matters
-- `### Method Lineage` — what prior work it builds on / departs from; where it sits in the field; name related ideas already in `wiki/` when you can
+- `### Method Lineage` — what prior work it builds on / departs from; where it sits in the field; name related ideas already in `<domain>/wiki/` when you can
 - `### Core Method` — the central idea and its key assumptions/conditions (conceptual, not the math)
 - `### Concepts & Entities` — **every** term/concept a newcomer could not parse on first read (not only the "important" ones), so the writer can enforce the no-naked-jargon rule. Tag each `[page]` (meets the promotion threshold in `rules/writing-style.md` — central to the source, recurring across ≥2 sources, or query-worthy) or `[gloss]` (minor — inline gloss + link only, no page yet), and give a one-line role/definition the writer can reuse
-- `### Open Questions` — unresolved directions worth a `wiki/questions/` page
+- `### Open Questions` — unresolved directions worth a `<domain>/wiki/questions/` page
 
 Keep it tight and source-grounded. No reasoning preamble.
 
 ## Boundaries
 
-- Read-only with respect to `raw/` and `wiki/` — never edit those. Your **only** write is your findings note under `.claude/scratch/findings/`.
+- Read-only with respect to the assigned domain's `<domain>/raw/` and `<domain>/wiki/` — never edit those. Do not open other domains. Your **only** write is your findings note under `.claude/scratch/findings/`.
 - Do not invent lineage or related-work claims the source does not support; if a connection is a guess, list it under Open Questions.
 - Do not spawn subagents.

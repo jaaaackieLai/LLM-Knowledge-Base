@@ -1,58 +1,54 @@
 # Repository Structure
 
-This file describes the repository layout and the role of each top-level maintenance document.
-
 ## Directory Structure
 
 ```text
-second-brain/
-├── AGENTS.md                # Codex agent entry file
-├── CLAUDE.md                # Claude Code entry file (orchestration + tooling)
+LLM-Knowledge-Base/
+├── AGENTS.md                # Entry file for Claude Code and Codex: role, language, orchestration, pointer to rules/
 ├── README.md
-├── rules/
-│   ├── repository-structure.md
-│   ├── content-rules.md
-│   ├── page-formats.md
-│   ├── workflows.md
-│   └── writing-style.md
+├── index.md                 # Top-level entrance: lists every domain with a path link to its overview
+├── rules/                   # Shared framework: structure, content, formats, workflows, and style
 ├── .claude/
-│   ├── skills/              # canonical skills: compile, coverage-review, lint, query, sweep, language
-│   ├── agents/              # subagent specs: raw-watcher, three analysts, compile-runner, coverage-reviewer, blind-answerer, lint-runner
+│   ├── skills/              # Canonical skills: compile, coverage-review, lint, query, sweep, language
+│   ├── agents/              # Canonical sub-agent specs: raw-watcher, analysts (incl. paper-reader), compile-runner, coverage-reviewer, blind-answerer, lint-runner
 │   └── scratch/
-│       ├── findings/        # analyst findings notes, one set per source (left for manual cleanup)
-│       └── coverage/        # coverage-review question / answer-key / blind-answer files (left for manual cleanup)
+│       ├── findings/        # Analyst findings notes, one set per source (the user cleans these manually)
+│       ├── coverage/        # Coverage-review question, answer-key, and blind-answer files (the user cleans these manually)
+│       └── code/            # Official-code clones made by paper-reader (the user cleans these manually)
 ├── .agents/
-│   └── skills/              # Codex skill mirrors — thin pointers to .claude/skills/ (never fork content here)
+│   └── skills/              # Codex skill mirrors
 ├── .codex/
-│   └── agents/              # Codex sub-agent definitions — thin shims pointing at .claude/agents/ specs
-├── docs/
-│   └── assets/              # repo-level illustrations, not wiki content
-├── raw/                     # Immutable source material
-│   ├── raw-index.md         # Tracking table for ingest status
-│   └── assets/              # Images and attachments
-└── wiki/                    # LLM-maintained wiki
-    ├── log.md               # Append-only change log, outside the semantic graph (rotated yearly to log-YYYY.md)
-    ├── overview.md          # Top-level wiki entrance, links only to clusters
-    ├── clusters/            # Top-level cluster entrance pages
-    ├── subclusters/         # Cluster-internal topic entrances
-    ├── sources/             # Per-source summary pages
-    ├── concepts/            # Abstract concept pages
-    ├── entities/            # Person / tool / organization pages
-    ├── comparisons/         # Comparison pages
-    ├── analyses/            # Archived query results
-    └── questions/           # Open questions and exploration directions
+│   └── agents/              # Codex sub-agent shims
+├── .github/
+│   └── assets/              # README illustrations, not wiki content
+└── <domain>/                # One folder per domain, e.g. deep-learning-research/
+    ├── GUIDE.md             # Domain guide: scope, material, analysts, overrides, subcluster keys (tracked by git)
+    ├── raw/                 # Immutable source material (gitignored)
+    │   ├── raw-index.md     # Ingest and validation status table, outside the semantic graph
+    │   └── assets/          # Images and attachments
+    └── wiki/                # LLM-maintained wiki for this domain (gitignored)
+        ├── overview.md      # Domain entrance: core question, scope boundary, subclusters
+        ├── log.md           # Append-only change log, outside the semantic graph
+        ├── subclusters/     # Topic entrances inside this domain
+        ├── sources/         # Per-source summary pages
+        ├── concepts/        # Abstract concept pages
+        ├── entities/        # Person / tool / organization pages
+        ├── comparisons/     # Comparison pages
+        ├── analyses/        # Archived query results
+        └── questions/       # Open questions and exploration directions
 ```
 
-## Entry Roles
+`.gitignore` ignores every folder named `raw/` or `wiki/` at any depth. Git tracks `index.md` and each `<domain>/GUIDE.md`.
 
-- `AGENTS.md` / `CLAUDE.md`: short entry files that define role, language behavior, orchestration, and where to find the rules
-- `wiki/overview.md`: the only top-level wiki entrance page; it routes readers into clusters
-- `wiki/clusters/`: entrance pages for each major topic partition; they define the broad domain and route readers to subclusters
-- `wiki/subclusters/`: second-level entrance pages for specific topic lines inside a cluster
-- `wiki/log.md`: a maintenance log, not part of the semantic graph; rotate yearly per content-rules.md rule 19
-- `raw/raw-index.md`: a tracking table for source ingest and validation status, not part of the semantic graph
+## Identifying Domains
+
+- A domain is a folder directly under the repository root that contains `GUIDE.md`. Find domains with the glob `*/GUIDE.md`.
+- The folder name is the domain key, in kebab-case.
+- A root folder without `GUIDE.md` is not a domain. Skills and agents skip it.
+- In rules, skills, and agents, `<domain>` stands for the domain key. Example: `<domain>/wiki/overview.md` resolves to `deep-learning-research/wiki/overview.md`.
 
 ## Single Source of Truth
 
-- `.claude/skills/` holds the canonical, executable workflow definitions; `rules/workflows.md` holds the harness-agnostic phase contract.
-- `.agents/skills/` (Codex skills) and `.codex/agents/` (Codex sub-agents) are thin mirrors that point back at the canonical `.claude/` files. Never edit workflow substance in a mirror — update the canonical file and keep the mirror a pointer, so the two harnesses cannot drift.
+- `.claude/skills/` holds the executable workflow definitions. `rules/workflows.md` holds the harness-agnostic phase contract.
+- `rules/` holds the shared framework. Each `<domain>/GUIDE.md` overrides content and analysis defaults for its domain only (`content-rules.md` → GUIDE.md precedence).
+- `.agents/skills/` and `.codex/agents/` are thin mirrors that point back at the canonical `.claude/` files. Change workflow substance only in the canonical file and keep each mirror a pointer, so the two harnesses cannot drift.

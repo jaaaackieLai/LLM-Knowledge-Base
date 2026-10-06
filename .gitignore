@@ -1,2 +1,4 @@
 raw/
 wiki/
+# In-repo scratch for agent notes, coverage files, and code clones
+.claude/scratch/

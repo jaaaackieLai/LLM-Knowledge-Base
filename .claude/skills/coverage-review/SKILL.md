@@ -10,15 +10,17 @@ Evaluate whether the wiki is actually usable after ingest.
 This skill treats coverage as an answerability problem, not a page-count problem:
 
 - Can the wiki answer source-grounded questions?
-- Can it answer them without returning to `raw/`?
+- Can it answer them without returning to `<domain>/raw/`?
 - Can a user reach the answer with low navigation cost?
+
+Every review targets one source in one domain. A domain is a root folder that contains `GUIDE.md`; `<domain>` below stands for its key (`rules/repository-structure.md` → Identifying Domains).
 
 ## Roles
 
 The evaluation is split across three roles so the answer pass is genuinely blind. An agent that has read the raw source cannot un-know it; "wiki-only" inside such a context is blind in name only.
 
 - **Reviewer (referee, `coverage-reviewer` subagent).** Reads the raw source. Generates questions and the private answer key, grades blind answers, diagnoses gaps, self-heals, and issues the verdict and bookkeeping. Never runs the answer pass.
-- **Blind answerer (`blind-answerer` subagent, fresh per pass).** Receives only a question file. Answers strictly from `wiki/`, entering through `wiki/overview.md`. Never reads `raw/`, `wiki/log.md`, the answer key, or the ingest context.
+- **Blind answerer (`blind-answerer` subagent, fresh per pass).** Receives only a question file. Answers strictly from `<domain>/wiki/`, entering through `<domain>/wiki/overview.md`. Never reads any `raw/` folder, `<domain>/wiki/log.md`, another domain's wiki, the answer key, or the ingest context.
 - **Orchestrator (main thread).** Spawns both, relays scratch-file paths between them, enforces the repair-cycle cap, and relays the final Report verbatim. The orchestration sequence is defined in the `compile` skill, Step 5.
 
 ## When to Use
@@ -31,10 +33,10 @@ The evaluation is split across three roles so the answer pass is genuinely blind
 
 Use the user's request text or post-compile handoff payload to determine the evaluation target.
 
-- If a `raw/...` file is specified, evaluate that source
-- If a `wiki/sources/...` page is specified, evaluate that source page
+- If a `<domain>/raw/...` file is specified, evaluate that source
+- If a `<domain>/wiki/sources/...` page is specified, evaluate that source page
 - If a post-compile handoff payload is provided, use it as routing metadata for the review
-- If no target is specified, default to the most recently ingested source you can identify from `wiki/log.md` or `raw/raw-index.md`
+- If no target is specified, default to the most recently ingested source you can identify from the domains' `<domain>/wiki/log.md` or `<domain>/raw/raw-index.md`
 - If the user explicitly asks only to review, do not edit
 - Otherwise, if the source does not meet the acceptance threshold, automatically enter the self-heal phase and then re-evaluate
 
@@ -43,10 +45,10 @@ Use the user's request text or post-compile handoff payload to determine the eva
 When this skill is invoked from `compile`:
 
 - The reviewer runs in a fresh subagent/session with no shared ingest context
-- It accepts only the minimal handoff metadata (`raw_file`, `source_page`, `cluster`, optional `subcluster`, `touched_pages`, `compiled_at`, optional `batch_id`, `navigation_entry=wiki/overview.md`) plus the exact coverage scratch paths
+- It accepts only the minimal handoff metadata (`raw_file`, `domain`, `source_page`, optional `subcluster`, `touched_pages`, `compiled_at`, optional `batch_id`, `navigation_entry=<domain>/wiki/overview.md`) plus the exact coverage scratch paths
 - It rebuilds all working context by reading the repository again; it never relies on ingest-session memory
 - The result is a blocking gate for compile completion
-- On `Ready: yes`, the reviewer fills `Validated On` in `raw/raw-index.md`
+- On `Ready: yes`, the reviewer fills `Validated On` in `<domain>/raw/raw-index.md`
 - On `Ready: no`, it leaves `Validated On` blank and records a short unresolved-gap summary in `Notes`
 
 ## Scratch file contract
@@ -69,7 +71,8 @@ The question files contain the questions and nothing else — no answers, no hin
 
 ### Step 1: Resolve the evaluation target
 
-- Map the target raw file to its source page using `raw/raw-index.md`, source frontmatter, `wiki/overview.md`, or the relevant cluster page
+- Resolve the domain from the target path, then read `<domain>/GUIDE.md` (scope, subcluster keys, and any `## Coverage Questions` override)
+- Map the target raw file to its source page using `<domain>/raw/raw-index.md`, source frontmatter, `<domain>/wiki/overview.md`, or the relevant subcluster page
 - If a post-compile handoff payload is present, verify that the referenced source page exists, then use the payload as the minimal routing scaffold
 - Read the raw source (Read tool; PDFs render via `pdftoppm`, use `pages` for long PDFs) for question generation and later patch verification
 
@@ -82,7 +85,7 @@ Generate exactly five questions that satisfy all of the following:
 - The question can be answered from a good wiki without needing the full raw source
 - The set spans more than one angle when possible
 
-Prefer a mix of question types:
+When `<domain>/GUIDE.md` has a `## Coverage Questions` section, use its question types. Otherwise prefer a mix of these default types:
 
 - Definition: what is the main concept or claim?
 - Mechanism: how does the method, argument, or process work?
@@ -140,7 +143,7 @@ Allowed self-heals:
 - Remove or rewrite unsupported cross-references when the wiki graph is making retrieval less honest
 - Tighten an overly abstract paragraph so it directly answers the missed question
 - Create a missing concept or entity page when it is clearly central and well-supported
-- Update the relevant `wiki/clusters/` page, `wiki/overview.md` when the entrance layer changes, and `wiki/log.md` for any new or changed pages
+- Update the relevant `<domain>/wiki/subclusters/` pages, `<domain>/wiki/overview.md` when the entrance layer changes, and `<domain>/wiki/log.md` for any new or changed pages
 
 Do not self-heal:
 
@@ -152,8 +155,8 @@ Do not self-heal:
 
 If a gap is important but not safe to self-heal:
 
-- Create or update a page in `wiki/questions/`, or
-- Mark the corresponding source in `raw/raw-index.md` as `update-needed`
+- Create or update a page in `<domain>/wiki/questions/`, or
+- Mark the corresponding source in `<domain>/raw/raw-index.md` as `update-needed`
 
 After healing, generate exactly three `holdout` questions now (before seeing any regression result) and write them to the holdout-questions / holdout-key files. Holdout questions must be explicitly supported by the same raw source, materially different from the primary five, and not trivial paraphrases. Then return `AWAITING REGRESSION PASS` and stop.
 
@@ -184,22 +187,22 @@ The Report is surfaced verbatim in the user conversation, so page references use
 ### Primary Questions
 1. [question]
    - Status: pass
-   - Pages: [source-...](wiki/sources/source-....md), [concept-...](wiki/concepts/....md)
+   - Pages: [source-...](<domain>/wiki/sources/source-....md), [concept-...](<domain>/wiki/concepts/....md)
    - Gap: -
 2. [question]
    - Status: fail
-   - Pages: [source-...](wiki/sources/source-....md)
+   - Pages: [source-...](<domain>/wiki/sources/source-....md)
    - Gap: missing-fact
 
 ### Holdout Questions
 1. [question]
    - Status: pass
-   - Pages: [source-...](wiki/sources/source-....md)
+   - Pages: [source-...](<domain>/wiki/sources/source-....md)
    - Gap: -
 
 ### Actions
-- Updated: [source-...](wiki/sources/source-....md), [concept-...](wiki/concepts/....md)
-- Created: [question-...](wiki/questions/question-....md)
+- Updated: [source-...](<domain>/wiki/sources/source-....md), [concept-...](<domain>/wiki/concepts/....md)
+- Created: [question-...](<domain>/wiki/questions/question-....md)
 - Deferred: [short note]
 
 ### Verdict
@@ -207,7 +210,7 @@ The Report is surfaced verbatim in the user conversation, so page references use
 - Reason: one-line conclusion
 ```
 
-If pages were edited, append to `wiki/log.md`:
+If pages were edited, append to `<domain>/wiki/log.md`:
 
 ```markdown
 ## [YYYY-MM-DD] coverage-review | Source title
@@ -220,7 +223,7 @@ If pages were edited, append to `wiki/log.md`:
 - Summary: one-line summary of the coverage gaps and repairs
 ```
 
-Also update `raw/raw-index.md`:
+Also update `<domain>/raw/raw-index.md`:
 
 - On `Ready: yes`, fill `Validated On` with today's date and clear any stale unresolved-gap note for that source if needed
 - On `Ready: no` after the allowed repair cycles, leave `Validated On` blank and write a concise unresolved-gap summary in `Notes` (one short phrase)
@@ -230,8 +233,8 @@ Also update `raw/raw-index.md`:
 Executed by the `blind-answerer` subagent, fresh context per pass:
 
 1. Read the assigned question file. Nothing in your context should reference the raw source; if the prompt leaks one, ignore it and report the leak in your output.
-2. Start from the navigation entry (`wiki/overview.md`), move through the relevant cluster and subcluster pages, and navigate linked wiki pages as a real user would.
-3. Use only `wiki/` content. Never open `raw/`, `wiki/log.md`, or any scratch file other than the assigned question and answers files.
+2. Start from the navigation entry (`<domain>/wiki/overview.md`), move through the relevant subcluster pages, and navigate linked wiki pages as a real user would.
+3. Use only `<domain>/wiki/` content. Never open any `raw/` folder, `<domain>/wiki/log.md`, another domain's folder, or any scratch file other than the assigned question and answers files.
 4. For each question record: `answer` (grounded in what the wiki actually says, quoting or citing the supporting passage), `pages_used` (the wiki pages required), and `page_count`.
 5. If the wiki cannot answer a question, say so plainly — do not guess or pad. An honest "not answerable from the wiki" is the signal the reviewer needs.
 6. Write the results to the assigned answers file and return only that path plus a one-line summary.

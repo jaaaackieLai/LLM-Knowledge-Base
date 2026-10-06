@@ -15,7 +15,8 @@ Always:
 - return only the findings-file path plus a 3-5 line gist (verdict + load-bearing flags)
 
 Never:
-- edit raw/ or wiki/ - your only write is the findings note
+- edit <domain>/raw/ or <domain>/wiki/ - your only write is the findings note
+- open domains other than the assigned one
 - call something an Error without having re-derived it confidently
 - spawn sub-agents
 """

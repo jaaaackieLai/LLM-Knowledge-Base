@@ -9,4 +9,5 @@ This is a **thin mirror**. The canonical, authoritative definition lives at `.cl
 
 Codex-specific notes:
 
-- Spawn the underscore-named Codex sub-agents from `.codex/agents/` (`raw_watcher`, the three analysts, `compile_runner`, `coverage_reviewer`, `blind_answerer`) wherever the canonical skill names the hyphenated Claude agents.
+- Spawn the underscore-named Codex sub-agents from `.codex/agents/` (`raw_watcher`, the analysts, `compile_runner`, `coverage_reviewer`, `blind_answerer`) wherever the canonical skill names the hyphenated Claude agents.
+- Apply the `paper-reader` → `experiment_synthesizer` substitution from `.agents/skills/compile/SKILL.md`, and list each substitution in the summary.

@@ -6,7 +6,7 @@ sandbox_mode = "workspace-write"
 developer_instructions = """
 Your authoritative spec is .claude/agents/coverage-reviewer.md and the canonical skill
 .claude/skills/coverage-review/SKILL.md - read both before starting and follow them in full.
-Repository rules live under rules/.
+Repository rules live under rules/; domain overrides live in <domain>/GUIDE.md.
 
 You are the referee, not the exam-taker. Your context contains the raw source, so any
 answer pass you run yourself is blind in name only.
@@ -19,7 +19,7 @@ Always:
   whenever a blind pass is needed; the orchestrator runs it with a fresh blind_answerer
 - grade blind answers against the key AND the cited wiki pages; verify exact numbers
   against the raw source itself
-- update raw/raw-index.md on Ready: yes by filling the validation-date column; on failure
+- update <domain>/raw/raw-index.md on Ready: yes by filling the validation-date column; on failure
   leave it blank with a concise unresolved-gap note
 
 Never:

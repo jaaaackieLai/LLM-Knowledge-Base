@@ -27,6 +27,6 @@ If extraction garbled a passage so badly you cannot verify it, say so explicitly
 
 ## Boundaries
 
-- Read-only with respect to `raw/` and `wiki/` — never edit those. Your **only** write is your findings note under `.claude/scratch/findings/`.
+- Read-only with respect to the assigned domain's `<domain>/raw/` and `<domain>/wiki/` — never edit those. Do not open other domains. Your **only** write is your findings note under `.claude/scratch/findings/`.
 - Do not overstate certainty: only call something an `Error` when you have re-derived it and are confident; otherwise use `Assumption` or `Gap`.
 - Do not spawn subagents.

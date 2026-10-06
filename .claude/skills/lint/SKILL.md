@@ -22,11 +22,14 @@ Use the user's request text to decide which check(s) to run.
 
 ## Workflow
 
-### Step 1: Scan wiki entrances
+### Step 1: Scan domains and entrances
 
-- Read `wiki/overview.md` and all pages under `wiki/clusters/` to get the entrance structure
-- Scan all .md files under `wiki/`
+- Find every domain with the glob `*/GUIDE.md`. A domain is a root folder that contains `GUIDE.md`; `<domain>` below stands for its key (`rules/repository-structure.md` → Identifying Domains)
+- Read `index.md`, then for each domain read `<domain>/GUIDE.md`, `<domain>/wiki/overview.md`, and all pages under `<domain>/wiki/subclusters/` to get the entrance structure
+- Scan all .md files under each `<domain>/wiki/`
 - Compare entrance pages vs actual files for inconsistencies
+
+Run checks 2a–2j per domain, and report each finding with its domain. Check 2k compares domains with each other.
 
 ### Step 2: Run checks
 
@@ -35,13 +38,13 @@ Execute the following checks in order, reporting results after each:
 #### 2a: Orphan pages (orphans)
 
 - Scan all `[[wiki-link]]` references across wiki pages
-- Find pages with zero inbound links (excluding log.md and overview.md)
+- Find pages with zero inbound links from the same domain (excluding `log.md` and `overview.md`)
 - Report: list orphan pages
 
 #### 2b: Broken links (broken-links)
 
 - Scan all `[[wiki-link]]` references
-- Find links pointing to non-existent pages
+- Find links pointing to pages that do not exist in the same domain
 - Report: list broken links and the pages containing them
 
 #### 2c: Missing pages (missing-pages)
@@ -68,16 +71,19 @@ Execute the following checks in order, reporting results after each:
 
 #### 2g: Entrance integrity (routing | index)
 
-- Confirm `wiki/overview.md` links only to cluster pages
-- Confirm every declared cluster has a matching page under `wiki/clusters/`
-- Confirm content pages use a valid `cluster` key (and, when present, a valid `subcluster` key) per `rules/content-rules.md`
-- Confirm `raw/raw-index.md` status matches actual ingest state
-- **Raw-index table integrity**: no filename appears in more than one row; every row has exactly six cells (literal `|` inside a cell must be escaped as `\|`); every row's file actually exists under `raw/`; every file under `raw/` (excluding `raw-index.md` and `assets/`) has at most one row; status is one of the allowed values
+- Confirm `index.md` lists every domain exactly once with a path link to `<domain>/wiki/overview.md`, and lists no folder that lacks `GUIDE.md`
+- Confirm each domain has `<domain>/wiki/overview.md`, `<domain>/wiki/log.md`, and `<domain>/raw/raw-index.md`
+- Confirm `<domain>/wiki/overview.md` links to every page under `<domain>/wiki/subclusters/`
+- Confirm every `<domain>/wiki/subclusters/` page matches a key in `<domain>/GUIDE.md` → Subcluster Keys
+- Confirm every `subcluster` value in frontmatter is a key in `<domain>/GUIDE.md` → Subcluster Keys
+- Confirm `<domain>/raw/raw-index.md` status matches actual ingest state
+- **Raw-index table integrity**: no filename appears in more than one row; every row has exactly six cells (literal `|` inside a cell must be escaped as `\|`); every row's file actually exists under `<domain>/raw/`; every file under `<domain>/raw/` (excluding `raw-index.md` and `assets/`) has at most one row; status is one of the allowed values
 
 #### 2h: Frontmatter integrity (frontmatter)
 
 - Confirm all wiki pages have YAML frontmatter
-- Check required fields: title, type, created, updated, sources, tags, and `cluster` for all non-`overview` / non-`cluster` pages
+- Check required fields: title, type, created, updated, sources, tags
+- Confirm `type` is one of the values in `rules/page-formats.md` → Frontmatter Format
 
 #### 2i: Relation quality (relation-quality)
 
@@ -89,10 +95,16 @@ Execute the following checks in order, reporting results after each:
 
 #### 2j: Subcluster promotion threshold (promotion)
 
-- For each cluster page, scan its supplementary research-line section (e.g. `## 補充研究線`) and, for each line, count the strongly related pages (the line's source pages plus the concept/question pages they introduce)
+- For each `<domain>/wiki/overview.md`, scan its supplementary research-line section (e.g. `## 補充研究線`) and, for each line, count the strongly related pages (the line's source pages plus the concept/question pages they introduce)
 - Flag any line whose page count meets the subcluster threshold in `rules/content-rules.md` (3+ strongly related pages) as due for promotion to a formal subcluster
-- Flag any cluster page whose supplementary section has grown beyond one link per research line, or whose total link list makes it read like a content page instead of an entrance
+- Flag any domain overview whose supplementary section has grown beyond one link per research line, or whose total link list makes it read like a content page instead of an entrance
 - Report: promotion suggestions and entrance-bloat findings for user confirmation (promotion itself is a content change — never auto-fix)
+
+#### 2k: Domain boundaries (domains)
+
+- Flag every `[[link]]` inside a domain that resolves only to a page in another domain. Links stay within one domain (`rules/content-rules.md` → Links)
+- Warn when two domains hold wiki pages with the same filename, because Obsidian may resolve a short `[[page-name]]` to the wrong domain
+- Report: cross-domain links and duplicate filenames, each with both paths
 
 ### Step 3: Summary report
 
@@ -118,7 +130,7 @@ Present all findings in checklist format:
 
 ### Step 5: Update log
 
-- Append to `wiki/log.md`:
+- Append to the `<domain>/wiki/log.md` of each domain where a fix was applied:
 
   ```
   ## [YYYY-MM-DD] lint | Health check

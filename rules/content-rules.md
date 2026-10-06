@@ -1,116 +1,74 @@
 # Content Rules
 
-This file defines the wiki's content rules, cluster structure, and relation policy.
+## Files and Pages
 
-## Core Rules
+- Files under `<domain>/raw/` are immutable. The one exception is `<domain>/raw/raw-index.md`, which is updated after ingest (format in `page-formats.md` → `<domain>/raw/raw-index.md`).
+- Use kebab-case filenames.
+- Source page filenames are topic-oriented: name a `<domain>/wiki/sources/` page after the paper's core method or concept, with no venue or year prefix. Example: `source-graph-information-bottleneck` (✅), not `source-neurips-2020-graph-information-bottleneck` (❌). The reader recognizes the topic from the filename alone.
+- A wiki filename must be unique inside its domain. For duplicates across domains, see Links.
+- Every wiki content page has YAML frontmatter (`page-formats.md`) and at least one inbound link.
 
-1. Never modify files under `raw/`, except `raw/raw-index.md`.
-2. Every wiki content page must have YAML frontmatter, except `wiki/log.md`.
-3. Update `wiki/log.md` only when there is a substantive wiki content change. Pure tooling or documentation maintenance does not belong there.
-4. Use Obsidian wiki links in content pages: `[[page-name]]`. Do not use wiki links inside `wiki/log.md`.
-5. Avoid orphan pages. Every wiki content page should have at least one inbound link.
-6. Use kebab-case filenames.
-7. Update `raw/raw-index.md` after ingest is complete.
-8. Every non-navigation content page has exactly one primary `cluster`. `source`, `concept`, `entity`, `comparison`, `analysis`, and `question` pages must all declare it.
-9. `subcluster` is optional but singular. Use it when the page clearly belongs to one stable topic entrance inside its parent cluster.
-10. `cluster` and `subcluster` are navigation aids, not a substitute for semantic relations. `[[links]]` should still reflect high-confidence meaning.
-11. Use `bridges` sparingly. Add a bridge only when the page genuinely spans another cluster and the bridge can be justified in one concrete sentence.
-12. Related-page lists must explain the relation. Use the pattern `[[page-name]] — relation explanation`.
-13. Add links only with high confidence. If you cannot justify the relation in one concrete sentence supported by raw material or existing wiki content, do not link it.
-14. Distinguish direct relations from extended relations. Direct relations come from explicit source statements, dependencies, comparisons, author/work relations, or question/source relations. Extended relations require supported editorial synthesis already grounded elsewhere in the wiki.
-15. Avoid vague relation notes such as `related`, `see also`, or other weak catch-all language.
-16. `wiki/log.md` records change events only and must stay outside the semantic graph.
-17. No naked jargon. A technical term's first appearance on a page must resolve to an existing `[[link]]`, an inline gloss, or a new concept page, following the tiered first-appearance-term policy in `writing-style.md`. Do not create stub pages just to satisfy a link.
-18. Source page filenames are topic-oriented: name a `wiki/sources/` page after the paper's core method/concept in kebab-case, with no venue or year prefix. Example: `source-graph-information-bottleneck` (✅), not `source-neurips-2020-graph-information-bottleneck` (❌). The reader should recognize the topic from the filename without needing the venue.
-19. Rotate `wiki/log.md` yearly: at the start of each year (or once the file exceeds roughly 200 KB), move the previous year's entries into `wiki/log-YYYY.md` and keep only the current year in `wiki/log.md`. Log archives stay outside the semantic graph, like the log itself.
-20. In `raw/raw-index.md`, keep every table cell to one short phrase and escape literal `|` characters as `\|`. Long validation narratives belong in `wiki/log.md`, not in the index. Do not use alignment padding — one compact row per line keeps anchored edits reliable.
+## Links
 
-## Cluster Keys
+- Link with Obsidian wiki links: `[[page-name]]`.
+- A `[[link]]` inside a domain targets only pages of the same domain. Domains do not link to each other.
+- `index.md` is the one exception: it links to each domain's overview with a path link, e.g. `[[deep-learning-research/wiki/overview|deep-learning-research]]`, because every domain has an `overview.md`.
+- Obsidian resolves a short `[[page-name]]` vault-wide. When two domains hold the same filename, the link can resolve to the wrong domain, so lint reports such duplicates.
 
-This repository currently uses four primary clusters:
+## Log
 
-- `self-management-growth` — self-management, self-development, creativity, and individual agency
-- `deep-learning-research` — deep learning theory, methods, representation learning, and model analysis
-- `agent-engineering-practice` — agent workflows, harness design, engineering practice, and AI tool use in research or development
-- `quant-finance-interview-prep` — quantitative finance interview preparation: probability/statistics, regression/data-science, market making, and firm-specific question banks
+Each domain keeps its own `<domain>/wiki/log.md`. It records substantive wiki content changes in that domain only. Tooling and documentation maintenance stay out of it. It has no frontmatter and no `[[links]]`, and it stays outside the semantic graph. At the start of each year, move the previous year's entries into `<domain>/wiki/log-YYYY.md`. Archives follow the same rules as the log.
 
-## Subcluster Keys
+## Domains
 
-Current subclusters are grouped under their parent cluster:
+A domain answers "which large area am I in?" A `subcluster` answers "which topic line inside that domain should I enter first?"
 
-### `self-management-growth`
+- A domain is a root folder that contains `GUIDE.md` (`repository-structure.md` → Identifying Domains). A page belongs to the domain whose folder holds it, so frontmatter carries no domain field.
+- `subcluster` is optional and singular. Use it when the page clearly belongs to one stable topic entrance inside its domain. Valid keys live in `<domain>/GUIDE.md` → Subcluster Keys.
+- Domains and subclusters are navigation aids. `[[links]]` still carry the semantic relations.
 
-- `identity-and-agency` — identity transition, agency recovery, long-term direction, and dispersion control
-- `multi-interest-integration` — organizing multiple interests into a coherent knowledge or work trajectory
-- `creative-recovery` — rebuilding creative capacity by reducing overload, restoring boredom, and re-entering sustained making
+### GUIDE.md precedence
 
-### `deep-learning-research`
+Each `<domain>/GUIDE.md` (format in `page-formats.md` → `<domain>/GUIDE.md`) sets the domain's scope, material type, and subcluster keys. Its optional sections override defaults for that domain only:
 
-- `information-bottleneck-and-mutual-information` — IB, MI estimation, variational bounds, and information-theoretic representation learning
-- `contrastive-representation-learning` — contrastive objectives, view design, supervised/self-supervised variants, and multimodal contrastive pretraining
-- `time-series-modeling-and-explainability` — time-series forecasting, time-series explanations, and sequence-specific interpretation methods
-- `transformers-and-model-analysis` — Transformer mechanisms, attention structure, attribution, and mechanistic or geometric model analysis
-- `weight-space-learning-and-parameter-generation` — model weight space learning, model zoo representations, permutation-aware alignment, and neural network parameter generation
-- `generative-dynamics-and-scaling` — generative modeling, world models, dynamical systems, posterior sampling, and scaling behavior
-- `privacy-attacks-and-membership-inference` — membership inference, federated-learning privacy attacks and defenses, and model-memorization leakage analysis
+| GUIDE.md section | Default it overrides |
+|------------------|----------------------|
+| `## Analysts` | The default analyst team in `workflows.md` → Ingest |
+| `## Source Page` | The source-page structure in the compile skill, W2 |
+| `## Coverage Questions` | The question types in the coverage-review skill, Step 2 |
 
-### `agent-engineering-practice`
+GUIDE.md cannot override the shared framework: frontmatter, link rules, the log, the raw-index format, the phase contract, and blind-review separation. When GUIDE.md conflicts with any of these, `rules/` wins.
 
-- `agent-workflows-and-harnesses` — harness design, workflow discipline, living specs, and operational control surfaces
-- `human-judgment-and-ai-collaboration` — cognitive outsourcing, AI fatigue, supervision, pedagogy, and judgment-preserving collaboration
-- `technical-communication-and-research-writing` — code comments, technical exposition, and research argument structure
+## Relations
 
-## Cluster and Subcluster Design
+- Link only with high confidence: one concrete sentence, supported by raw material or existing wiki content, must justify the relation. When a relation is plausible but not yet supportable, capture it as a `<domain>/wiki/questions/` page instead.
+- Label every relation as one of two kinds:
+  - `直接關聯` — an explicit source statement, dependency, comparison, author/work relation, or question/source relation.
+  - `延伸關聯` — editorial synthesis already grounded elsewhere in the wiki.
+- Write related-page entries as `- [[page-name]] — 直接關聯：<the concrete bridge>`. The note names the actual bridge, so catch-alls such as `related` or `see also` never qualify.
+- Every technical term resolves at its first appearance, per `writing-style.md` → First-Appearance Terms.
 
-A `cluster` is the broad navigation layer for the second brain. It answers "which large domain am I in?" A `subcluster` is the more specific entrance layer inside that domain. It answers "which concrete topic line should I enter first?"
+## Creating Subclusters and Domains
 
-In this repository, `cluster` is intentionally broader than `subcluster`:
+Default to an existing subcluster. Handle a secondary angle with links and relation notes. When the fit is ambiguous, leave `subcluster` empty until a stable topic entrance emerges.
 
-- `cluster` preserves large-domain adjacency, so readers can still see how neighboring themes belong to the same map region
-- `subcluster` provides the sharper entrance for a stable topic that would be too blurred if left only at cluster level
+Create a subcluster when all of these hold:
 
-### **When to Reuse an Existing Subcluster**
+1. At least `3` strongly related pages exist, or more are clearly expected soon.
+2. The topic has a clear entrance question and boundary inside its domain.
+3. Readers benefit from entering through a topic page instead of scanning a long flat domain overview.
 
-Default to an existing subcluster whenever the page clearly fits one established topic line inside the parent cluster. If the page has a secondary angle, prefer ordinary `[[links]]`, relation notes, or `bridges` instead of splitting entrances too early.
+After creating a subcluster:
 
-### **When to Create a New Subcluster**
+1. Add the key and its definition to `<domain>/GUIDE.md` → Subcluster Keys.
+2. Create the entrance page under `<domain>/wiki/subclusters/`, with scope, boundary, and representative pages.
+3. Link the new entrance from `<domain>/wiki/overview.md`.
+4. Reassign existing pages only where it improves navigation.
 
-Create a new subcluster when all of the following are true:
+Agents never create a domain on their own. A new domain starts only when the user asks for it, and the agent designs its `GUIDE.md` together with the user. To create a domain:
 
-1. A specific topic line has become stable: at least `3` strongly related pages already exist, or more are clearly expected soon.
-2. The topic has a clear entrance question and boundary inside the parent cluster.
-3. Readers would benefit from entering through that topic page rather than scanning a long flat cluster page.
-4. The topic is still part of the parent cluster's larger domain and does not need a new top-level map region.
-
-### **When to Create a New Cluster**
-
-Create a new cluster only when all of the following are true:
-
-1. A stable new large-domain problem space has emerged and it no longer feels like a subtopic of an existing cluster.
-2. The new area needs to sit beside existing clusters in the top-level map, not under one of them.
-3. Readers would lose important domain adjacency if it stayed buried as only a subcluster.
-4. Existing clusters are being forced to mix fundamentally different map regions instead of neighboring topic lines.
-
-### **When Not to Create a New Cluster**
-
-- A topic with only one source or a short-lived side branch
-- A topic that is specific and stable, but still clearly belongs under an existing cluster as a subcluster
-- A method, lens, workflow, or person that naturally spans multiple clusters
-- A need that can be handled by tags, links, or cross-references instead of a new entrance page
-- A temporarily dense topic whose core questions still fit an existing cluster's map region
-
-If the situation is ambiguous, keep the existing `cluster`, try an existing `subcluster` first, or leave `subcluster` empty until a stable topic entrance actually emerges.
-
-### **When a New Subcluster Is Created**
-
-1. Add the new subcluster key and definition here.
-2. Create a matching page under `wiki/subclusters/` with clear scope, boundary, and representative pages.
-3. Update the parent page under `wiki/clusters/` so the subcluster becomes part of the formal entrance layer.
-4. Reassign existing pages only when helpful. Do not reshuffle the whole repository just for symmetry.
-
-### **When a New Cluster Is Created**
-
-1. Add the new cluster key and definition here.
-2. Create a matching page under `wiki/clusters/`.
-3. Update `wiki/overview.md` so the new cluster becomes a formal entrance.
-4. Add or move subclusters only where needed. Do not reshuffle the whole repository just for symmetry.
+1. Create the folder `<domain>/` at the repository root, named with the kebab-case domain key.
+2. Write `<domain>/GUIDE.md` with the user: Scope, Material, Subcluster Keys, and any override sections.
+3. Create `<domain>/raw/raw-index.md` with the table header only.
+4. Create `<domain>/wiki/overview.md` and an empty `<domain>/wiki/log.md`.
+5. Add the domain to `index.md` with a path link to its overview.

@@ -1,40 +1,83 @@
 # Page Formats
 
-This file defines frontmatter requirements and the expected format of special navigation and tracking pages.
-
 ## Frontmatter Format
 
 ```yaml
 ---
 title: Page Title
-type: overview | source | concept | entity | comparison | analysis | question | cluster | subcluster
+type: overview | source | concept | entity | comparison | analysis | question | subcluster
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
-sources: [raw/filename.md] # overview / cluster may use []
-cluster: cluster-key # required for source / concept / entity / comparison / analysis / question / subcluster; omit for overview / cluster. Valid keys are defined in rules/content-rules.md → Cluster Keys (single source of truth — do not enumerate them here)
-subcluster: subcluster-key # optional for source / concept / entity / comparison / analysis / question. Valid keys are defined in rules/content-rules.md → Subcluster Keys
-bridges: [other-cluster-key] # optional; usually omitted for overview / cluster / subcluster
+sources: [raw/filename.md] # path relative to the domain folder; overview / subcluster may use []
+subcluster: subcluster-key # optional and singular for source / concept / entity / comparison / analysis / question. Valid keys are defined in <domain>/GUIDE.md → Subcluster Keys
 tags: [tag1, tag2]
 ---
 ```
 
-## `wiki/overview.md`
+The domain is the folder that holds the page, so frontmatter has no domain field.
 
-`wiki/overview.md` is the only top-level navigation page. It should list cluster entrances only, not regular content pages or subcluster pages.
+## `index.md`
+
+`index.md` sits at the repository root. It is the top-level entrance and lists every domain, one line each. It has no frontmatter and stays outside every domain's semantic graph. It uses path links, because every domain has a file named `overview.md`.
 
 ```markdown
-# Knowledge Base Overview
+# Knowledge Base Index
 
-## Clusters
-- [[cluster-<key>]] — cluster entrance, one line per cluster key defined in content-rules.md
+## Domains
+- [[deep-learning-research/wiki/overview|deep-learning-research]] — one-line scope from GUIDE.md
 ```
 
-## `wiki/clusters/*.md`
+## `<domain>/GUIDE.md`
 
-Cluster pages are broad-domain entrances. They should route readers to subclusters first, then explain boundary and bridge routes.
+`GUIDE.md` defines one domain. Git tracks it. It has no frontmatter. Precedence rules are in `content-rules.md` → GUIDE.md precedence.
 
 ```markdown
-# 聚落：領域名稱
+# <domain-key>
+
+## Scope
+- 收：...
+- 不收：...
+
+## Material
+type: paper | other
+One sentence on what the source material is.
+
+## Analysts
+<!-- optional; when omitted, the default team runs -->
+- theory-context-analyst → <slug>-theory.md
+- derivation-checker → <slug>-derivation.md
+- paper-reader → <slug>-paper.md
+
+## Source Page
+<!-- optional; when omitted, the compile skill W2 default structure applies -->
+
+## Coverage Questions
+<!-- optional; when omitted, the coverage-review skill Step 2 default question types apply -->
+
+## Subcluster Keys
+- `key` — definition
+```
+
+- `## Analysts` lists one analyst per line as `<agent-name> → <slug>-<suffix>.md`. The orchestrator passes each analyst the exact findings path `.claude/scratch/findings/<slug>-<suffix>.md`, and the analyst writes its note there.
+- `## Subcluster Keys` is the single source of truth for that domain's valid `subcluster` values.
+
+## `<domain>/wiki/overview.md`
+
+`overview.md` is the domain entrance. It routes readers to subclusters first, then states the scope boundary. It does not list regular content pages one by one. The 收錄邊界 section restates `GUIDE.md` → Scope for readers and must stay consistent with it.
+
+```yaml
+---
+title: 領域：領域名稱
+type: overview
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+sources: []
+tags: [overview, navigation]
+---
+```
+
+```markdown
+# 領域：領域名稱
 
 ## 核心問題
 - ...
@@ -47,9 +90,9 @@ Cluster pages are broad-domain entrances. They should route readers to subcluste
 - [[subcluster-example]] — specific topic entrance
 ```
 
-## `wiki/subclusters/*.md`
+## `<domain>/wiki/subclusters/*.md`
 
-Subcluster pages are specific topic entrances inside one parent cluster.
+Subcluster pages are specific topic entrances inside one domain.
 
 ```yaml
 ---
@@ -58,7 +101,6 @@ type: subcluster
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 sources: []
-cluster: deep-learning-research
 tags: [subcluster, navigation]
 ---
 ```
@@ -78,9 +120,9 @@ tags: [subcluster, navigation]
 - [[concept-example]] — concept relation
 ```
 
-## `raw/raw-index.md`
+## `<domain>/raw/raw-index.md`
 
-`raw/raw-index.md` tracks ingest and validation status for raw source material. It does not participate in the semantic graph.
+Each domain has one `raw-index.md`. It tracks ingest and validation status for that domain's raw source material. It does not participate in the semantic graph.
 
 ```markdown
 # Raw Sources Index
@@ -91,11 +133,11 @@ tags: [subcluster, navigation]
 | pending.md | pending | - | - | - | waiting for ingest |
 ```
 
-Allowed status values: `pending` / `in-progress` / `done` / `update-needed`
+Status values: `pending` / `done` / `update-needed`
 
-Formatting constraints (see also content-rules.md rule 20):
+Formatting:
 
-- One compact row per line, no alignment padding — padded tables make anchored edits fragile.
-- Every cell stays one short phrase; long validation narratives belong in `wiki/log.md`.
-- Escape literal `|` inside a cell as `\|`, otherwise the row splits.
-- One row per file on disk; never add a second row for the same filename.
+- The File cell holds the filename under `<domain>/raw/`, with no folder prefix.
+- One row per file on disk, written as one compact line with no alignment padding. Padded tables make anchored edits fragile.
+- Each cell holds one short phrase. Long validation narratives belong in `<domain>/wiki/log.md`.
+- Escape a literal `|` inside a cell as `\|`, otherwise the row splits.
